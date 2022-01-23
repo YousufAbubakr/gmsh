@@ -87,12 +87,12 @@ def matrixPrismGenertor(centers, xtranslation, ytranslations, ztranslation):
     extrusions.append(tuple([1, gmshOCC.addLine(gmshOCC.getMaxTag(0), center2_start)]))
     #Connecting the source and target base faces with lines:
     for i in range(8):
-        gmshOCC.addLine(center1_start + i, center2_start + i)
+        extrusions.append(gmshOCC.addLine(center1_start + i, center2_start + i))
     return extrusions
 
 def curveLoopGenerator(curveTags, loopBools, iterNums, jumpBools, curveJump = 1, pointTags = []):
     """
-     curveLoopGenerator(curveTags, loopBools, iterNums)
+     curveLoopGenerator(curveTags, loopBools, iterNums, jumpBools, curveJump = 1, pointTags = [])
 
     Generated curve loop and surface entities based off of the curve loop pattern
     given by the model's geometry setup. Usually, the curves are oriented CCW, so 
@@ -103,7 +103,7 @@ def curveLoopGenerator(curveTags, loopBools, iterNums, jumpBools, curveJump = 1,
     have a circular iteration condition assoiated with its curve loop definition
     up to a certain number of iterations, 'iterNum'
 
-    Returns list of curve loops being defined.
+    Returns list of surfaces being defined.
     """
     assert len(curveTags) == len(loopBools), "Curve tags list must be the same length as loop booleans list."
     curveTagsLst = []
@@ -127,21 +127,21 @@ def curveLoopGenerator(curveTags, loopBools, iterNums, jumpBools, curveJump = 1,
                     curveTagsLst.append([curveTags[i] + j for j in range(iterNums)])
     curveLoopZipped = zip(*curveTagsLst)
     curveLoopLst = list(curveLoopZipped)
+    surfLoopLst = []
     iter = 0
     for elem in curveLoopLst:
-        #print(list(elem))
         curves = gmshOCC.addCurveLoop(list(elem))
         if pointTags == []:
-            gmshOCC.addSurfaceFilling(curves, -1)
+            surfLoopLst.append(gmshOCC.addSurfaceFilling(curves))
         else:
-            gmshOCC.addSurfaceFilling(curves, -1, [pointTags[0] + iter, pointTags[1] + iter])
+            surfLoopLst.append(gmshOCC.addSurfaceFilling(curves, -1, [pointTags[0] + iter, pointTags[1] + iter]))
             iter += 2
     #print("Curve Loops being defined: ", curveLoopLst)
-    return curveLoopLst
+    return surfLoopLst
 
 def surfaceLoopGenerator(surfTags, loopBools, iterNums, jumpBools, surfJump = 1):
     """
-     curveLoopGenerator(curveTags, loopBools, iterNums, jumpBools, surfJump = 1)
+     surfaceLoopGenerator(surfTags, loopBools, iterNums, jumpBools, surfJump = 1)
 
     Generated curve loop and surface entities based off of the curve loop pattern
     given by the model's geometry setup. Usually, the curves are oriented CCW, so 
@@ -176,30 +176,32 @@ def surfaceLoopGenerator(surfTags, loopBools, iterNums, jumpBools, surfJump = 1)
                     surfTagsLst.append([surfTags[i] + j for j in range(iterNums)])
     surfLoopZipped = zip(*surfTagsLst)
     surfLoopLst = list(surfLoopZipped)
+    volLst = []
     for elem in surfLoopLst:
         #print(list(elem))
         surfs = gmshOCC.addSurfaceLoop(list(elem), -1, True)
-        gmshOCC.addVolume([surfs])
+        volLst.append(gmshOCC.addVolume([surfs]))
     #print("Surface Loops being defined: ", surfLoopLst)
-    return surfLoopLst
+    return volLst
 
-#Main Function:
-def matrixfibergeo(matrix_ID, transfinite_curves, angle = 30, but1 = 1/3, but2 = 2/9):
+#Main Functions:
+def matrixfibergeo_right(matrix_ID, transfinite_curves, angle = 30, but1 = 1/3, but2 = 2/9):
     """
-     matrixfibergeo(matrix_ID)
+     matrixfibergeo_right(matrix_ID, transfinite_curves, angle = 30, but1 = 1/3, but2 = 2/9)
 
-    Defines geometry for one matrix-fiber set that is based off of the SolidWorks
-    Part files, starting with the matrix-fiber set with fibers angled cross-ply at some
-    angle 'angle' with matrix ID, 'matrix_ID', such that a matrix ID of 0 corresponds 
-    to the right-most, corner-most matrix-fiber body, and 'but1' and 'but2' represent 
-    the butterfly ratios, which is the ratio determining how large the butterfly 
-    prism will be with respect to the elliptical boundary, for the source and 
-    target butterfly prisms. 'transfinite_curves' is a list of dim = 2 that contains
-    numNodes data, such that the first element represents the number of nodes on the
-    source and target face curves, while the second element represents the number of
-    nodes on the curves in between the source and target faces.
+    Defines geometry for one matrix-fiber set *on the right hand side of the entire layer* 
+    that is based off of the SolidWorks Part files, starting with the matrix-fiber 
+    set with fibers angled cross-ply at some angle 'angle' with matrix ID, 'matrix_ID', 
+    such that a matrix ID of 0 corresponds to the right-most, corner-most matrix-fiber 
+    body, and 'but1' and 'but2' represent the butterfly ratios, which is the ratio 
+    determining how large the butterfly prism will be with respect to the elliptical 
+    boundary, for the source and target butterfly prisms. 'transfinite_curves' is 
+    a list of dim = 2 that contains numNodes data, such that the first element 
+    represents the number of nodes on the source and target face curves, while 
+    the second element represents the number of nodes on the curves in between 
+    the source and target faces.
 
-    Returns matrix-fiber set geometry entities
+    Returns matrix-fiber set geometry entities *on the right hand side*
     """
     #Main Dimensions of one Matrix-Fiber Layer:
     height = 11
@@ -245,7 +247,7 @@ def matrixfibergeo(matrix_ID, transfinite_curves, angle = 30, but1 = 1/3, but2 =
     gmshMOD = gmsh.model
 
     #Geometry Generation
-    #The origin
+    #The origin:
     #origin = gmshOCC.addPoint(0, 0, 0)
     
     #Next, we wanna create the outer most boundaries of corner-most fiber. To do so,
@@ -259,7 +261,8 @@ def matrixfibergeo(matrix_ID, transfinite_curves, angle = 30, but1 = 1/3, but2 =
     #function 'matrixPrismGenerator,' which fully defines the curves we wouls like
     #to make:
     matrix = matrixPrismGenertor([[x_start, y_start, 0], [0, y_start, z_start]], width/2, [t/2, t/2], height/2)
-    
+    #Defining relevant curve loop variables (will become apparent later on):
+    matbound_curveloop = [matrix[0][1][1], matrix[16]]
     #Geometries with multiple matrix bodies will have interseting points and lines
     #at the points/surface of contact, but because overlapping entities don't
     #impact the mesh, the overlapping entities will stay in the model for
@@ -276,30 +279,27 @@ def matrixfibergeo(matrix_ID, transfinite_curves, angle = 30, but1 = 1/3, but2 =
     min_axis = r
     center_source = [x_ell_start, y_ell_start, 0]
     center_target = [0, y_ell_start, z_ell_start]
-    gmshOCC.addPoint(center_source[0], center_source[1], center_source[2])
+    #Additionally, we will defining a relevant point variable (will become apparent later on):
+    point_ref_tag = gmshOCC.addPoint(center_source[0], center_source[1], center_source[2])
+    #For mat_ID = 0, point_ref_tag = 17
     gmshOCC.addPoint(center_target[0], center_target[1], center_target[2])
     #Next, we define source_ell and target_ell that stores the generated ellipse
     #curve data to be able to generate coneecting lines between source and
     #target face ellipses
     source_ell = []
     target_ell = []
-    mat_ID_param = 32
     for i in range(8):
-        source_ell.append(gmshOCC.addEllipse(x_ell_start, y_ell_start, 0, maj_axis_source, min_axis, -1, i*pi/4, (i + 1)*pi/4))
-        #target_ell.append(gmshOCC.addEllipse(0, y_ell_start, z_ell_start, maj_axis_target, min_axis, -1, i*pi/4, (i + 1)*pi/4))
+        source_ell.append(gmshOCC.addEllipse(x_ell_start, y_ell_start, 0, maj_axis_source, 
+                                             min_axis, -1, i*pi/4, (i + 1)*pi/4))
+        #print("Ellipse arcs on source face: ", source_ell, "Ellipse arcs on target face: ", target_ell)
+    for i in range(8):
+        target_ell.append(gmshOCC.addEllipse(0, y_ell_start, z_ell_start, maj_axis_target, 
+                                             min_axis, -1, i*pi/4, (i + 1)*pi/4))
         #print("Ellipse arcs on source face: ", source_ell, "Ellipse arcs on target face: ", target_ell)
         #Because the addEllipse function does not allow you to define the orientation
         #in which the ellipse is defined, we must automatically rotate its curves
         #to define it for our model:
-        #gmshOCC.rotate([(1, 26 + 2*i + mat_ID_param*mat_ID)], 0, y_ell_start, z_ell_start, 0, -1, 0, pi/2)
-    mat_ID_param = 256
-    for i in range(8):
-        target_ell.append(gmshOCC.addEllipse(0, y_ell_start, z_ell_start, maj_axis_target, min_axis, -1, i*pi/4, (i + 1)*pi/4))
-        #print("Ellipse arcs on source face: ", source_ell, "Ellipse arcs on target face: ", target_ell)
-        #Because the addEllipse function does not allow you to define the orientation
-        #in which the ellipse is defined, we must automatically rotate its curves
-        #to define it for our model:
-        gmshOCC.rotate([(1, 33 + i + mat_ID_param*mat_ID)], 0, y_ell_start, z_ell_start, 0, -1, 0, pi/2)
+        gmshOCC.rotate([(1, target_ell[-1])], 0, y_ell_start, z_ell_start, 0, -1, 0, pi/2)
     #Current gmsh model needs to be synchronized onto OpenCASCADE CAD representation
     #in order to use stored source_ell and target_ell data
     #NOTE, generally you want to be able to reduce the number of times you
@@ -330,6 +330,9 @@ def matrixfibergeo(matrix_ID, transfinite_curves, angle = 30, but1 = 1/3, but2 =
                        center_source[2]], [center_target[0], center_target[1], 
                                            center_target[2] + square_target]], 
                                            square_source, [square_source, square_target], square_target)
+    #Defining relevant curve loop variables (will become apparent later on):
+    extbound_curveloop = [extruded_entities[0][1][1], extruded_entities[16]]
+
     gmshOCC.synchronize()
     #Now that we've created all of the main meshing bodies, we have to define the
     #lines that connect these bodies. To do, we have to do a lot of data sorting
@@ -407,113 +410,145 @@ def matrixfibergeo(matrix_ID, transfinite_curves, angle = 30, but1 = 1/3, but2 =
     #Now, we actually have to use these points/curves to define curveloops, surfaces,
     #and volumes. Let's focus primarily on the outer matrix body first. To do so, 
     #we will primarily use the utility function 'curveLoopGenerator,' which fully
-    #defines the surfaces we would like to make. We also need to define some key
-    #tagging related variables that account for the tag differences across each
-    #matrix ID:
-    mat_ID_surfparam = 154
-    mat_ID_volparam = 16
-    mat_ID_pointparam = 98
-    mat_ID_param = 256
-    curveLoopGenerator([mat_ID_param*mat_ID + 1, mat_ID_param*mat_ID + 17, mat_ID_param*mat_ID + 9, mat_ID_param*mat_ID + 18], 
+    #defines the surfaces we would like to make:
+    #Outer matrix boundary:
+    curveLoopGenerator([matbound_curveloop[0], matbound_curveloop[1], 
+                        matbound_curveloop[0] + 8, matbound_curveloop[1] + 1], 
                            [False, False, False, True], 8, [False, False, False, False])
     #The butterfly prism, ellipses, and intermediate surfaces require a similar 
     #procedure as well:
-    #Butterfly prism:
-    curveLoopGenerator([mat_ID_param*mat_ID + 49, mat_ID_param*mat_ID + 65, mat_ID_param*mat_ID + 57, mat_ID_param*mat_ID + 66], 
+    #Butterfly prism (8 individual surfaces):
+    curveLoopGenerator([extbound_curveloop[0], extbound_curveloop[1], 
+                        extbound_curveloop[0] + 8, extbound_curveloop[1] + 1], 
                             [False, False, False, True], 8, [False, False, False, False])
-    curves4 = gmshOCC.addCurveLoop([56 + mat_ID_param*mat_ID, 49 + mat_ID_param*mat_ID, 66 + mat_ID_param*mat_ID, 57 + mat_ID_param*mat_ID, 64 + mat_ID_param*mat_ID, 72 + mat_ID_param*mat_ID])
-    gmshOCC.addSurfaceFilling(curves4)
-    curves1 = gmshOCC.addCurveLoop([50 + mat_ID_param*mat_ID, 51 + mat_ID_param*mat_ID, 68 + mat_ID_param*mat_ID, 59 + mat_ID_param*mat_ID, 58 + mat_ID_param*mat_ID, 66 + mat_ID_param*mat_ID])
+    #Butterfly prism (4 grouped surfaces):
+    curves1 = gmshOCC.addCurveLoop([extbound_curveloop[0] + 7, extbound_curveloop[0], 
+                                    extbound_curveloop[1] + 1, extbound_curveloop[0] + 8, 
+                                    extbound_curveloop[0] + 15, extbound_curveloop[1] + 7])
     gmshOCC.addSurfaceFilling(curves1)
-    curves2 = gmshOCC.addCurveLoop([52 + mat_ID_param*mat_ID, 53 + mat_ID_param*mat_ID, 70 + mat_ID_param*mat_ID, 61 + mat_ID_param*mat_ID, 60 + mat_ID_param*mat_ID, 68 + mat_ID_param*mat_ID])
+    curves2 = gmshOCC.addCurveLoop([extbound_curveloop[0] + 1, extbound_curveloop[0] + 2, 
+                                    extbound_curveloop[1] + 3, extbound_curveloop[0] + 10, 
+                                    extbound_curveloop[0] + 9, extbound_curveloop[1] + 1])
     gmshOCC.addSurfaceFilling(curves2)
-    curves3 = gmshOCC.addCurveLoop([54 + mat_ID_param*mat_ID, 55 + mat_ID_param*mat_ID, 72 + mat_ID_param*mat_ID, 63 + mat_ID_param*mat_ID, 62 + mat_ID_param*mat_ID, 70 + mat_ID_param*mat_ID])
+    curves3 = gmshOCC.addCurveLoop([extbound_curveloop[0] + 3, extbound_curveloop[0] + 4, 
+                                    extbound_curveloop[1] + 5, extbound_curveloop[0] + 12, 
+                                    extbound_curveloop[0] + 11, extbound_curveloop[1] + 3])
     gmshOCC.addSurfaceFilling(curves3)
+    curves4 = gmshOCC.addCurveLoop([extbound_curveloop[0] + 5, extbound_curveloop[0] + 6, 
+                                    extbound_curveloop[1] + 7, extbound_curveloop[0] + 14, 
+                                    extbound_curveloop[0] + 13, extbound_curveloop[1] + 5])
+    gmshOCC.addSurfaceFilling(curves4)
+    #In all of our matrix-fiber bodies, because of the linear pattern of this method's
+    #meshing scheme, the matrix-fiber bodies will have the same corresponding curves
+    #with tags that vary linearly, so it will be useful to have a reference curve
+    #tag for each matrix ID that can be used in defining curve loops. The reference tag
+    #can be chosen to have any arbitrary tag number, so define it accordingly:
+    ref_tag = extbound_curveloop[0] #For mat_ID = 0, ref_tag = 49
     #Connecting butterfly prism and ellipse:
-    curveLoopGenerator([mat_ID_param*mat_ID + 73, mat_ID_param*mat_ID + 41, mat_ID_param*mat_ID + 81, mat_ID_param*mat_ID + 65], 
+    curveLoopGenerator([ref_tag + 24, ref_tag - 8, ref_tag + 32, ref_tag + 16], 
                             [False, False, False, False], 8, [False, False, False, False])
     #Connecting ellipse and matrix:
-    curveLoopGenerator([mat_ID_param*mat_ID + 89, mat_ID_param*mat_ID + 17, mat_ID_param*mat_ID + 97, mat_ID_param*mat_ID + 41], 
+    curveLoopGenerator([ref_tag + 40, ref_tag - 32, ref_tag + 48, ref_tag - 8], 
                             [False, False, False, False], 8, [False, False, False, False])
     #Ellipse connecting faces:
-    curveLoopGenerator([mat_ID_param*mat_ID + 25, mat_ID_param*mat_ID + 41, mat_ID_param*mat_ID + 33, mat_ID_param*mat_ID + 42], 
+    curveLoopGenerator([ref_tag - 24, ref_tag - 8, ref_tag - 16, ref_tag - 7], 
                             [False, False, False, True], 8, [False, False, False, False])
     
     #For practicality purposes, it is also useful to define the combined surface
-    #of two faces, anf this will be helpful for the intermediate elliptical surfaces
+    #of two faces, and this will be helpful for the intermediate elliptical surfaces
     #later on. For these cases, it will be complicated to use the previously stated
     #function, so we manually define them:
-    curves5 = gmshOCC.addCurveLoop([25 + mat_ID_param*mat_ID, 74 + mat_ID_param*mat_ID, 49 + mat_ID_param*mat_ID, 56 + mat_ID_param*mat_ID, 80 + mat_ID_param*mat_ID, 32 + mat_ID_param*mat_ID])
+    curves5 = gmshOCC.addCurveLoop([ref_tag - 24, ref_tag + 25, ref_tag, 
+                                    ref_tag + 7, ref_tag + 31, ref_tag - 17])
     gmshOCC.addSurfaceFilling(curves5)
-    curves6 = gmshOCC.addCurveLoop([27 + mat_ID_param*mat_ID, 76 + mat_ID_param*mat_ID, 51 + mat_ID_param*mat_ID, 50 + mat_ID_param*mat_ID, 74 + mat_ID_param*mat_ID, 26 + mat_ID_param*mat_ID])
+    curves6 = gmshOCC.addCurveLoop([ref_tag - 22, ref_tag + 27, ref_tag + 2, 
+                                    ref_tag + 1, ref_tag + 25, ref_tag - 23])
     gmshOCC.addSurfaceFilling(curves6)
-    curves7 = gmshOCC.addCurveLoop([29 + mat_ID_param*mat_ID, 78 + mat_ID_param*mat_ID, 53 + mat_ID_param*mat_ID, 52 + mat_ID_param*mat_ID, 76 + mat_ID_param*mat_ID, 28 + mat_ID_param*mat_ID])
+    curves7 = gmshOCC.addCurveLoop([ref_tag - 20, ref_tag + 29, ref_tag + 4, 
+                                    ref_tag + 3, ref_tag + 27, ref_tag - 21])
     gmshOCC.addSurfaceFilling(curves7)
-    curves8 = gmshOCC.addCurveLoop([31 + mat_ID_param*mat_ID, 80 + mat_ID_param*mat_ID, 55 + mat_ID_param*mat_ID, 54 + mat_ID_param*mat_ID, 78 + mat_ID_param*mat_ID, 30 + mat_ID_param*mat_ID])
+    curves8 = gmshOCC.addCurveLoop([ref_tag - 18, ref_tag + 31, ref_tag + 6, 
+                                    ref_tag + 5, ref_tag + 29, ref_tag - 19])
     gmshOCC.addSurfaceFilling(curves8)
-    curves9 = gmshOCC.addCurveLoop([33 + mat_ID_param*mat_ID, 82 + mat_ID_param*mat_ID, 57 + mat_ID_param*mat_ID, 64 + mat_ID_param*mat_ID, 88 + mat_ID_param*mat_ID, 40 + mat_ID_param*mat_ID])
+    curves9 = gmshOCC.addCurveLoop([ref_tag - 16, ref_tag + 33, ref_tag + 8, 
+                                    ref_tag + 15, ref_tag + 39, ref_tag - 9])
     gmshOCC.addSurfaceFilling(curves9)
-    curves10 = gmshOCC.addCurveLoop([35 + mat_ID_param*mat_ID, 84 + mat_ID_param*mat_ID, 59 + mat_ID_param*mat_ID, 58 + mat_ID_param*mat_ID, 82 + mat_ID_param*mat_ID, 34 + mat_ID_param*mat_ID])
+    curves10 = gmshOCC.addCurveLoop([ref_tag - 14, ref_tag + 35, ref_tag + 10, 
+                                     ref_tag + 9, ref_tag + 33, ref_tag - 15])
     gmshOCC.addSurfaceFilling(curves10)
-    curves11 = gmshOCC.addCurveLoop([37 + mat_ID_param*mat_ID, 86 + mat_ID_param*mat_ID, 61 + mat_ID_param*mat_ID, 60 + mat_ID_param*mat_ID, 84 + mat_ID_param*mat_ID, 36 + mat_ID_param*mat_ID])
+    curves11 = gmshOCC.addCurveLoop([ref_tag - 12, ref_tag + 37, ref_tag + 12, 
+                                     ref_tag + 11, ref_tag + 35, ref_tag - 13])
     gmshOCC.addSurfaceFilling(curves11)
-    curves12 = gmshOCC.addCurveLoop([39 + mat_ID_param*mat_ID, 88 + mat_ID_param*mat_ID, 63 + mat_ID_param*mat_ID, 62 + mat_ID_param*mat_ID, 86 + mat_ID_param*mat_ID, 38 + mat_ID_param*mat_ID])
+    curves12 = gmshOCC.addCurveLoop([ref_tag - 10, ref_tag + 39, ref_tag + 14, 
+                                     ref_tag + 13, ref_tag + 37, ref_tag - 11])
     gmshOCC.addSurfaceFilling(curves12)
-    curves13 = gmshOCC.addCurveLoop([25 + mat_ID_param*mat_ID, 42 + mat_ID_param*mat_ID, 33 + mat_ID_param*mat_ID, 40 + mat_ID_param*mat_ID, 48 + mat_ID_param*mat_ID, 32 + mat_ID_param*mat_ID])
+    curves13 = gmshOCC.addCurveLoop([ref_tag - 24, ref_tag - 7, ref_tag - 16, 
+                                     ref_tag - 9, ref_tag - 1, ref_tag - 17])
     gmshOCC.addSurfaceFilling(curves13)
-    curves14 = gmshOCC.addCurveLoop([27 + mat_ID_param*mat_ID, 44 + mat_ID_param*mat_ID, 35 + mat_ID_param*mat_ID, 34 + mat_ID_param*mat_ID, 42 + mat_ID_param*mat_ID, 26 + mat_ID_param*mat_ID])
+    curves14 = gmshOCC.addCurveLoop([ref_tag - 22, ref_tag - 5, ref_tag - 14, 
+                                     ref_tag - 15, ref_tag - 7, ref_tag - 23])
     gmshOCC.addSurfaceFilling(curves14)
-    curves15 = gmshOCC.addCurveLoop([29 + mat_ID_param*mat_ID, 46 + mat_ID_param*mat_ID, 37 + mat_ID_param*mat_ID, 36 + mat_ID_param*mat_ID, 44 + mat_ID_param*mat_ID, 28 + mat_ID_param*mat_ID])
+    curves15 = gmshOCC.addCurveLoop([ref_tag - 20, ref_tag - 3, ref_tag - 12, 
+                                     ref_tag - 13, ref_tag - 5, ref_tag - 21])
     gmshOCC.addSurfaceFilling(curves15)
-    curves16 = gmshOCC.addCurveLoop([31 + mat_ID_param*mat_ID, 48 + mat_ID_param*mat_ID, 39 + mat_ID_param*mat_ID, 38 + mat_ID_param*mat_ID, 46 + mat_ID_param*mat_ID, 30 + mat_ID_param*mat_ID])
+    curves16 = gmshOCC.addCurveLoop([ref_tag - 18, ref_tag - 1, ref_tag - 10, 
+                                     ref_tag - 11, ref_tag - 3, ref_tag - 19])
     gmshOCC.addSurfaceFilling(curves16)
     
     #Ellipse source faces:
-    curveLoopGenerator([mat_ID_param*mat_ID + 25, mat_ID_param*mat_ID + 74, mat_ID_param*mat_ID + 49, mat_ID_param*mat_ID + 73], 
+    curveLoopGenerator([ref_tag - 24, ref_tag + 25, ref_tag, ref_tag + 24], 
                             [False, True, False, False], 8, [False, False, False, False])
     #Ellipse target faces:
-    curveLoopGenerator([mat_ID_param*mat_ID + 33, mat_ID_param*mat_ID + 82, mat_ID_param*mat_ID + 57, mat_ID_param*mat_ID + 81], 
+    curveLoopGenerator([ref_tag - 16, ref_tag + 33, ref_tag + 8, ref_tag + 32], 
                             [False, True, False, False], 8, [False, False, False, False])
     #Matrix source faces:
-    curveLoopGenerator([mat_ID_param*mat_ID + 1, mat_ID_param*mat_ID + 90, mat_ID_param*mat_ID + 25, mat_ID_param*mat_ID + 89], 
+    curveLoopGenerator([ref_tag - 48, ref_tag + 41, ref_tag - 24, ref_tag + 40], 
                             [False, True, False, False], 8, [False, False, False, False])
     #Matrix target faces:
-    curveLoopGenerator([mat_ID_param*mat_ID + 9, mat_ID_param*mat_ID + 98, mat_ID_param*mat_ID + 33, mat_ID_param*mat_ID + 97], 
+    curveLoopGenerator([ref_tag - 40, ref_tag + 49, ref_tag - 16, ref_tag + 48], 
                             [False, True, False, False], 8, [False, False, False, False])
     #Butterfly prism source faces:
-    curveLoopGenerator([mat_ID_param*mat_ID + 49, mat_ID_param*mat_ID + 50, mat_ID_param*mat_ID + 51, mat_ID_param*mat_ID + 52, 
-                        mat_ID_param*mat_ID + 53, mat_ID_param*mat_ID + 54, mat_ID_param*mat_ID + 55, mat_ID_param*mat_ID + 56], 
-                            [False, False, False, False, False, False, False, False], 1, [False, False, False, False, False, False, False, False])
+    curveLoopGenerator([ref_tag, ref_tag + 1, ref_tag + 2, ref_tag + 3, 
+                        ref_tag + 4, ref_tag + 5, ref_tag + 6, ref_tag + 7], 
+                            [False, False, False, False, False, False, False, False], 1, 
+                            [False, False, False, False, False, False, False, False])
     #Butterfly prism target faces:
-    curveLoopGenerator([mat_ID_param*mat_ID + 57, mat_ID_param*mat_ID + 58, mat_ID_param*mat_ID + 59, mat_ID_param*mat_ID + 60, 
-                        mat_ID_param*mat_ID + 61, mat_ID_param*mat_ID + 62, mat_ID_param*mat_ID + 63, mat_ID_param*mat_ID + 64], 
-                            [False, False, False, False, False, False, False, False], 1, [False, False, False, False, False, False, False, False])
-   
+    surf_references = curveLoopGenerator([ref_tag + 8, ref_tag + 9, ref_tag + 10, ref_tag + 11, 
+                        ref_tag + 12, ref_tag + 13, ref_tag + 14, ref_tag + 15], 
+                            [False, False, False, False, False, False, False, False], 1, 
+                            [False, False, False, False, False, False, False, False])
+    #Defining relevant surface loop variables (will become apparent later on):
+    surf_ref_tag = surf_references[0]  #For mat_ID = 0, surf_ref_tag = 90
     #Nice! We've now additionally defined all of our surfaces. Next up is surface
     #loops and volume definitions. To do so, we will primarily use the utility 
     #function 'surfaceLoopGenerator,' which fully defines the volumes we would 
-    #like to make:
+    #like to make. Similarly, we can use the surface reference tag, 'surf_ref_tag'
+    #that can be used accordingly:
     #Outer matrix volume:
-    surfaceLoopGenerator([mat_ID_surfparam*mat_ID + 1, mat_ID_surfparam*mat_ID + 30, mat_ID_surfparam*mat_ID + 37, mat_ID_surfparam*mat_ID + 29, 
-                         mat_ID_surfparam*mat_ID + 73, mat_ID_surfparam*mat_ID + 81], 
-                         [False, True, False, False, False, False], 8, [False, False, False, False, False, False])
-    
+    surfaceLoopGenerator([surf_ref_tag - 89, surf_ref_tag - 60, surf_ref_tag - 53, 
+                          surf_ref_tag - 61, surf_ref_tag - 17, surf_ref_tag - 9], 
+                         [False, True, False, False, False, False], 8, 
+                         [False, False, False, False, False, False])
     #Outer elliptical volume:
-    surfaceLoopGenerator([mat_ID_surfparam*mat_ID + 37, mat_ID_surfparam*mat_ID + 22, mat_ID_surfparam*mat_ID + 9, mat_ID_surfparam*mat_ID + 21, 
-                         mat_ID_surfparam*mat_ID + 57, mat_ID_surfparam*mat_ID + 65], 
-                         [False, True, False, False, False, False], 8, [False, False, False, False, False, False])
+    surfaceLoopGenerator([surf_ref_tag - 53, surf_ref_tag - 68, surf_ref_tag - 81, 
+                          surf_ref_tag - 69, surf_ref_tag - 33, surf_ref_tag - 25], 
+                         [False, True, False, False, False, False], 8, 
+                         [False, False, False, False, False, False])
     
     #Butterfly prism volume:
-    surfaceLoopGenerator([mat_ID_surfparam*mat_ID + 17, mat_ID_surfparam*mat_ID + 18, mat_ID_surfparam*mat_ID + 19, mat_ID_surfparam*mat_ID + 20, 
-                         mat_ID_surfparam*mat_ID + 89, mat_ID_surfparam*mat_ID + 90], 
-                         [False, False, False, False, False, False], 1, [False, False, False, False, False, False])
+    vol_references = surfaceLoopGenerator([surf_ref_tag - 73, surf_ref_tag - 72, surf_ref_tag - 71, 
+                          surf_ref_tag - 70, surf_ref_tag - 1, surf_ref_tag], 
+                         [False, False, False, False, False, False], 1, 
+                         [False, False, False, False, False, False])
+    #Defining a relevant volume variable (will become apparent later on):
+    vol_ref_tag = vol_references[0]  #For mat_ID = 0, vol_ref_tag = 17
     gmshOCC.synchronize()
      
     #Transfinite Settings:
     #Useful tagging variables:
-    maxLTag = gmsh.model.occ.getMaxTag(1)
-    maxSTag = gmsh.model.occ.getMaxTag(2)
-    maxVTag = gmsh.model.occ.getMaxTag(3)
+    maxLTag = gmshOCC.getMaxTag(1)
+    maxSTag = gmshOCC.getMaxTag(2)
+    maxVTag = gmshOCC.getMaxTag(3)
     #We want to be able to specify the number of nodes on certain types of curves.
     #In this model, there are two main types of curves: source/target face curves
     #and connecting, intermediate curves. To do obtain this curve data, we concatenate 
@@ -521,13 +556,13 @@ def matrixfibergeo(matrix_ID, transfinite_curves, angle = 30, but1 = 1/3, but2 =
     all_curves = gmshOCC.getEntities(1)
     #All of connecting curves were generated in the surface sewing process,
     #most of whom, were out of order, so we specify these curves manually in 'sewed_curves':
-    sewed_curves = [mat_ID_param*mat_ID + 214, mat_ID_param*mat_ID + 219, mat_ID_param*mat_ID + 222, 
-                    mat_ID_param*mat_ID + 227, mat_ID_param*mat_ID + 232, mat_ID_param*mat_ID + 237, 
-                    mat_ID_param*mat_ID + 244, mat_ID_param*mat_ID + 249, mat_ID_param*mat_ID + 254, 
-                    mat_ID_param*mat_ID + 209, mat_ID_param*mat_ID + 202, mat_ID_param*mat_ID + 197, 
-                    mat_ID_param*mat_ID + 192, mat_ID_param*mat_ID + 187, mat_ID_param*mat_ID + 184, 
-                    mat_ID_param*mat_ID + 179, mat_ID_param*mat_ID + 129, mat_ID_param*mat_ID + 133, 
-                    mat_ID_param*mat_ID + 137, mat_ID_param*mat_ID + 141]
+    sewed_curves = [ref_tag + 165, ref_tag + 170, ref_tag + 173, 
+                    ref_tag + 178, ref_tag + 183, ref_tag + 188, 
+                    ref_tag + 195, ref_tag + 200, ref_tag + 205, 
+                    ref_tag + 160, ref_tag + 153, ref_tag + 148, 
+                    ref_tag + 143, ref_tag + 138, ref_tag + 135, 
+                    ref_tag + 130, ref_tag + 80, ref_tag + 84, 
+                    ref_tag + 88, ref_tag + 92]
     connecting_curves = []
     for elem in all_curves:
         boundaries = gmshMOD.getBoundary([elem])
@@ -541,122 +576,124 @@ def matrixfibergeo(matrix_ID, transfinite_curves, angle = 30, but1 = 1/3, but2 =
     #'transfinite_curves' variable:
     s_and_t = transfinite_curves[0]
     inter = transfinite_curves[1]
-    for i in range(1 + mat_ID_param*mat_ID, maxLTag + 1):
+    for i in range(ref_tag - 48, maxLTag + 1):
         if i in connecting_curves_tags:
             gmshMESH.setTransfiniteCurve(i, inter)
         else:
             gmshMESH.setTransfiniteCurve(i, s_and_t)
     #In defining transfinite surfaces, there are also special cases (mostly related
     #to the not well-defined ellipse regions) that we have to define the outer
-    #pointTags for:
-    for i in range(1 + mat_ID_surfparam*mat_ID, maxSTag + 1):
-         if i == mat_ID_surfparam*mat_ID + 53:
-             gmshMESH.setTransfiniteSurface(i, "Left", [mat_ID_pointparam*mat_ID + 33, 
-                                                        mat_ID_pointparam*mat_ID + 20, 
-                                                        mat_ID_pointparam*mat_ID + 37, 
-                                                        mat_ID_pointparam*mat_ID + 49])
+    #pointTags for. Additionally, we will also use the corresponding point tag
+    #reference variable, 'point_ref_tag' to describe the relevant point tags for
+    #each matrix ID:
+    for i in range(surf_ref_tag - 89, maxSTag + 1):
+         if i == surf_ref_tag - 37:
+             gmshMESH.setTransfiniteSurface(i, "Left", [point_ref_tag + 16, 
+                                                        point_ref_tag + 3, 
+                                                        point_ref_tag + 20, 
+                                                        point_ref_tag + 32])
              gmshMESH.setRecombine(2, i)
-         elif i == mat_ID_surfparam*mat_ID + 54:
-             gmshMESH.setTransfiniteSurface(i, "Left", [mat_ID_pointparam*mat_ID + 21, 
-                                                        mat_ID_pointparam*mat_ID + 24, 
-                                                        mat_ID_pointparam*mat_ID + 37, 
-                                                        mat_ID_pointparam*mat_ID + 41])
+         elif i == surf_ref_tag - 36:
+             gmshMESH.setTransfiniteSurface(i, "Left", [point_ref_tag + 4, 
+                                                        point_ref_tag + 7, 
+                                                        point_ref_tag + 20, 
+                                                        point_ref_tag + 24])
              gmshMESH.setRecombine(2, i)
-         elif i == mat_ID_surfparam*mat_ID + 55:
-             gmshMESH.setTransfiniteSurface(i, "Left", [mat_ID_pointparam*mat_ID + 25, 
-                                                        mat_ID_pointparam*mat_ID + 28, 
-                                                        mat_ID_pointparam*mat_ID + 41, 
-                                                        mat_ID_pointparam*mat_ID + 45])
+         elif i == surf_ref_tag - 35:
+             gmshMESH.setTransfiniteSurface(i, "Left", [point_ref_tag + 8, 
+                                                        point_ref_tag + 11, 
+                                                        point_ref_tag + 24, 
+                                                        point_ref_tag + 28])
              gmshMESH.setRecombine(2, i)    
-         elif i == mat_ID_surfparam*mat_ID + 56:
-             gmshMESH.setTransfiniteSurface(i, "Left", [mat_ID_pointparam*mat_ID + 29, 
-                                                        mat_ID_pointparam*mat_ID + 32, 
-                                                        mat_ID_pointparam*mat_ID + 45, 
-                                                        mat_ID_pointparam*mat_ID + 49])
+         elif i == surf_ref_tag - 34:
+             gmshMESH.setTransfiniteSurface(i, "Left", [point_ref_tag + 12, 
+                                                        point_ref_tag + 15, 
+                                                        point_ref_tag + 28, 
+                                                        point_ref_tag + 32])
              gmshMESH.setRecombine(2, i)             
-         elif i == mat_ID_surfparam*mat_ID + 45:
-             gmshMESH.setTransfiniteSurface(i, "Left", [mat_ID_pointparam*mat_ID + 20, 
-                                                         mat_ID_pointparam*mat_ID + 33, 
-                                                         mat_ID_pointparam*mat_ID + 52, 
-                                                         mat_ID_pointparam*mat_ID + 58])
+         elif i == surf_ref_tag - 45:
+             gmshMESH.setTransfiniteSurface(i, "Left", [point_ref_tag + 3, 
+                                                        point_ref_tag + 16, 
+                                                        point_ref_tag + 35, 
+                                                        point_ref_tag + 41])
              gmshMESH.setRecombine(2, i)
-         elif i == mat_ID_surfparam*mat_ID + 46:
-             gmshMESH.setTransfiniteSurface(i, "Left", [mat_ID_pointparam*mat_ID + 21, 
-                                                        mat_ID_pointparam*mat_ID + 24, 
-                                                        mat_ID_pointparam*mat_ID + 52, 
-                                                        mat_ID_pointparam*mat_ID + 54])
+         elif i == surf_ref_tag - 44:
+             gmshMESH.setTransfiniteSurface(i, "Left", [point_ref_tag + 4, 
+                                                        point_ref_tag + 7, 
+                                                        point_ref_tag + 35, 
+                                                        point_ref_tag + 37])
              gmshMESH.setRecombine(2, i)
-         elif i == mat_ID_surfparam*mat_ID + 47:
-             gmshMESH.setTransfiniteSurface(i, "Left", [mat_ID_pointparam*mat_ID + 25, 
-                                                        mat_ID_pointparam*mat_ID + 28, 
-                                                        mat_ID_pointparam*mat_ID + 54, 
-                                                        mat_ID_pointparam*mat_ID + 56])
+         elif i == surf_ref_tag - 43:
+             gmshMESH.setTransfiniteSurface(i, "Left", [point_ref_tag + 8, 
+                                                        point_ref_tag + 11, 
+                                                        point_ref_tag + 37, 
+                                                        point_ref_tag + 39])
              gmshMESH.setRecombine(2, i)    
-         elif i == mat_ID_surfparam*mat_ID + 48:
-             gmshMESH.setTransfiniteSurface(i, "Left", [mat_ID_pointparam*mat_ID + 29, 
-                                                        mat_ID_pointparam*mat_ID + 32, 
-                                                        mat_ID_pointparam*mat_ID + 56, 
-                                                        mat_ID_pointparam*mat_ID + 58])
+         elif i == surf_ref_tag - 42:
+             gmshMESH.setTransfiniteSurface(i, "Left", [point_ref_tag + 12, 
+                                                        point_ref_tag + 15, 
+                                                        point_ref_tag + 39, 
+                                                        point_ref_tag + 41])
              gmshMESH.setRecombine(2, i)        
-         elif i == mat_ID_surfparam*mat_ID + 49:
-             gmshMESH.setTransfiniteSurface(i, "Left", [mat_ID_pointparam*mat_ID + 36, 
-                                                         mat_ID_pointparam*mat_ID + 49, 
-                                                         mat_ID_pointparam*mat_ID + 60, 
-                                                         mat_ID_pointparam*mat_ID + 66])
+         elif i == surf_ref_tag - 41:
+             gmshMESH.setTransfiniteSurface(i, "Left", [point_ref_tag + 19, 
+                                                        point_ref_tag + 32, 
+                                                        point_ref_tag + 43, 
+                                                        point_ref_tag + 49])
              gmshMESH.setRecombine(2, i)
-         elif i == mat_ID_surfparam*mat_ID + 50:
-             gmshMESH.setTransfiniteSurface(i, "Left", [mat_ID_pointparam*mat_ID + 37, 
-                                                        mat_ID_pointparam*mat_ID + 40, 
-                                                        mat_ID_pointparam*mat_ID + 60, 
-                                                        mat_ID_pointparam*mat_ID + 62])
+         elif i == surf_ref_tag - 40:
+             gmshMESH.setTransfiniteSurface(i, "Left", [point_ref_tag + 20, 
+                                                        point_ref_tag + 23, 
+                                                        point_ref_tag + 43, 
+                                                        point_ref_tag + 45])
              gmshMESH.setRecombine(2, i)
-         elif i == mat_ID_surfparam*mat_ID + 51:
-             gmshMESH.setTransfiniteSurface(i, "Left", [mat_ID_pointparam*mat_ID + 41, 
-                                                        mat_ID_pointparam*mat_ID + 44, 
-                                                        mat_ID_pointparam*mat_ID + 62, 
-                                                        mat_ID_pointparam*mat_ID + 64])
+         elif i == surf_ref_tag - 39:
+             gmshMESH.setTransfiniteSurface(i, "Left", [point_ref_tag + 24, 
+                                                        point_ref_tag + 27, 
+                                                        point_ref_tag + 45, 
+                                                        point_ref_tag + 47])
              gmshMESH.setRecombine(2, i)    
-         elif i == mat_ID_surfparam*mat_ID + 52:
-             gmshMESH.setTransfiniteSurface(i, "Left", [mat_ID_pointparam*mat_ID + 45, 
-                                                        mat_ID_pointparam*mat_ID + 48, 
-                                                        mat_ID_pointparam*mat_ID + 64, 
-                                                        mat_ID_pointparam*mat_ID + 66])
+         elif i == surf_ref_tag - 38:
+             gmshMESH.setTransfiniteSurface(i, "Left", [point_ref_tag + 28, 
+                                                        point_ref_tag + 31, 
+                                                        point_ref_tag + 47, 
+                                                        point_ref_tag + 49])
              gmshMESH.setRecombine(2, i)   
-         elif i == mat_ID_surfparam*mat_ID + 89:
-             gmshMESH.setTransfiniteSurface(i, "Left", [mat_ID_pointparam*mat_ID + 52, 
-                                                        mat_ID_pointparam*mat_ID + 54, 
-                                                        mat_ID_pointparam*mat_ID + 56, 
-                                                        mat_ID_pointparam*mat_ID + 58])
+         elif i == surf_ref_tag - 1:
+             gmshMESH.setTransfiniteSurface(i, "Left", [point_ref_tag + 35, 
+                                                        point_ref_tag + 37, 
+                                                        point_ref_tag + 39, 
+                                                        point_ref_tag + 41])
              gmshMESH.setRecombine(2, i)    
-         elif i == mat_ID_surfparam*mat_ID + 90:
-             gmshMESH.setTransfiniteSurface(i, "Left", [mat_ID_pointparam*mat_ID + 60, 
-                                                        mat_ID_pointparam*mat_ID + 62, 
-                                                        mat_ID_pointparam*mat_ID + 64, 
-                                                        mat_ID_pointparam*mat_ID + 66])
+         elif i == surf_ref_tag:
+             gmshMESH.setTransfiniteSurface(i, "Left", [point_ref_tag + 43, 
+                                                        point_ref_tag + 45, 
+                                                        point_ref_tag + 47, 
+                                                        point_ref_tag + 49])
              gmshMESH.setRecombine(2, i)         
-         elif i == mat_ID_surfparam*mat_ID + 17:
-             gmshMESH.setTransfiniteSurface(i, "Left", [mat_ID_pointparam*mat_ID + 52, 
-                                                        mat_ID_pointparam*mat_ID + 58, 
-                                                        mat_ID_pointparam*mat_ID + 60, 
-                                                        mat_ID_pointparam*mat_ID + 66])
+         elif i == surf_ref_tag - 73:
+             gmshMESH.setTransfiniteSurface(i, "Left", [point_ref_tag + 35, 
+                                                        point_ref_tag + 41, 
+                                                        point_ref_tag + 43, 
+                                                        point_ref_tag + 49])
              gmshMESH.setRecombine(2, i)    
-         elif i == mat_ID_surfparam*mat_ID + 18:
-             gmshMESH.setTransfiniteSurface(i, "Left", [mat_ID_pointparam*mat_ID + 52, 
-                                                        mat_ID_pointparam*mat_ID + 54, 
-                                                        mat_ID_pointparam*mat_ID + 60, 
-                                                        mat_ID_pointparam*mat_ID + 62])
+         elif i == surf_ref_tag - 72:
+             gmshMESH.setTransfiniteSurface(i, "Left", [point_ref_tag + 35, 
+                                                        point_ref_tag + 37, 
+                                                        point_ref_tag + 43, 
+                                                        point_ref_tag + 45])
              gmshMESH.setRecombine(2, i)   
-         elif i == mat_ID_surfparam*mat_ID + 19:
-             gmshMESH.setTransfiniteSurface(i, "Left", [mat_ID_pointparam*mat_ID + 54, 
-                                                        mat_ID_pointparam*mat_ID + 56, 
-                                                        mat_ID_pointparam*mat_ID + 62, 
-                                                        mat_ID_pointparam*mat_ID + 64])
+         elif i == surf_ref_tag - 71:
+             gmshMESH.setTransfiniteSurface(i, "Left", [point_ref_tag + 37, 
+                                                        point_ref_tag + 39, 
+                                                        point_ref_tag + 45, 
+                                                        point_ref_tag + 47])
              gmshMESH.setRecombine(2, i)    
-         elif i == mat_ID_surfparam*mat_ID + 20:
-             gmshMESH.setTransfiniteSurface(i, "Left", [mat_ID_pointparam*mat_ID + 56, 
-                                                        mat_ID_pointparam*mat_ID + 58, 
-                                                        mat_ID_pointparam*mat_ID + 64, 
-                                                        mat_ID_pointparam*mat_ID + 66])
+         elif i == surf_ref_tag - 70:
+             gmshMESH.setTransfiniteSurface(i, "Left", [point_ref_tag + 39, 
+                                                        point_ref_tag + 41, 
+                                                        point_ref_tag + 47, 
+                                                        point_ref_tag + 49])
              gmshMESH.setRecombine(2, i)
 
          else:
@@ -664,16 +701,16 @@ def matrixfibergeo(matrix_ID, transfinite_curves, angle = 30, but1 = 1/3, but2 =
              gmshMESH.setRecombine(2, i) 
     #There is only one special case in defining transfinite volumes for the central
     #butterfly region, which we define accordingly:
-    for i in range(1 + mat_ID_volparam*mat_ID, maxVTag + 1):
+    for i in range(vol_ref_tag - 16, maxVTag + 1):
           if i == maxVTag:
-              gmshMESH.setTransfiniteVolume(i, [mat_ID_pointparam*mat_ID + 52, 
-                                                mat_ID_pointparam*mat_ID + 54, 
-                                                mat_ID_pointparam*mat_ID + 56, 
-                                                mat_ID_pointparam*mat_ID + 58, 
-                                                mat_ID_pointparam*mat_ID + 60, 
-                                                mat_ID_pointparam*mat_ID + 62, 
-                                                mat_ID_pointparam*mat_ID + 64, 
-                                                mat_ID_pointparam*mat_ID + 66])
+              gmshMESH.setTransfiniteVolume(i, [point_ref_tag + 35, 
+                                                point_ref_tag + 37, 
+                                                point_ref_tag + 39, 
+                                                point_ref_tag + 41, 
+                                                point_ref_tag + 43, 
+                                                point_ref_tag + 45, 
+                                                point_ref_tag + 47, 
+                                                point_ref_tag + 49])
           else:
               gmshMESH.setTransfiniteVolume(i)
     
@@ -694,28 +731,22 @@ def geometrygenerator(N):
     """
     all_all_entities = []
     for i in range(N):
-        all_all_entities.append(matrixfibergeo(i, [7, 5]))
+        all_all_entities.append(matrixfibergeo_right(i, [4, 5]))
     return all_all_entities
 
 numLayers = 1
-cent = 0.22
-width = cent/cos(30*pi/180)
-length = 6
-off = 0.08
-N_fib = 22
-start = length - width/2 - off - N_fib*width
-mat_ID = numLayers - 1
-x_start = -start - mat_ID*width
-z_start = -abs(x_start)*tan((90 - 30)*pi/180)
+#cent = 0.22
+#width = cent/cos(30*pi/180)
+#height = cent/sin(30*pi/180)
+#length = 6
+#off = 0.08
+#N_fib = 22
+#start = length - width/2 - off - N_fib*width
+#mat_ID = numLayers - 1
+#x_start = -start - mat_ID*width
+#z_start = -abs(x_start)*tan((90 - 30)*pi/180)
 
 geo = geometrygenerator(numLayers)
-
-geo_copy = []
-for elem in geo:
-    geo_copy += gmshOCC.copy(elem)
-gmshOCC.symmetrize(geo_copy, 1, 0, 0, abs(width) + abs(x_start))
-gmshOCC.symmetrize(geo_copy, 0, 0, 1, 0)
-gmshOCC.translate(geo_copy, 0, 0, z_start - 2*width)
 
 gmshOCC.synchronize()
 
