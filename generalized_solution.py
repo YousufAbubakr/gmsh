@@ -49,9 +49,9 @@ def dimTagReturner(dim, dimTags):
     newDimTags = [elem for elem in dimTags if elem[0] == dim]
     return newDimTags
 
-def matrixPrismGenertor(centers, xtranslation, ytranslations, ztranslation):
+def matrixPrismGenertor(centers, xtranslations, ytranslations, ztranslations):
     """
-     matrixPrismGenertor(centers, xtranslation, ytranslations, ztranslation)
+     matrixPrismGenertor(centers, xtranslations, ytranslations, ztranslations)
 
     Function that generates AND connects extruded curve enities for specific anti-parallel
     matrix geometry in the CAD model. Function is under the assumption that desired
@@ -68,22 +68,22 @@ def matrixPrismGenertor(centers, xtranslation, ytranslations, ztranslation):
     #Defining the source point and creating extrusions to create base for source face:
     center1_start = gmshOCC.addPoint(centers[0][0], centers[0][1], centers[0][2])
     extrusions.append(gmshOCC.extrude([(0, center1_start)], 0, ytranslations[0], 0))
-    extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), -xtranslation, 0, 0))
-    extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), -xtranslation, 0, 0))
+    extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), -xtranslations[0], 0, 0))
+    extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), -xtranslations[1], 0, 0))
     extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), 0, -ytranslations[0], 0))
     extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), 0, -ytranslations[0], 0))
-    extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), xtranslation, 0, 0))
-    extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), xtranslation, 0, 0))
+    extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), xtranslations[1], 0, 0))
+    extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), xtranslations[0], 0, 0))
     extrusions.append(tuple([1, gmshOCC.addLine(gmshOCC.getMaxTag(0), center1_start)]))
     #Defining the target point and creating extrusions to create base for target face:
     center2_start = gmshOCC.addPoint(centers[1][0], centers[1][1], centers[1][2])
     extrusions.append(gmshOCC.extrude([(0, center2_start)], 0, ytranslations[1], 0))
-    extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), 0, 0, -ztranslation))
-    extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), 0, 0, -ztranslation))
+    extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), 0, 0, -ztranslations[0]))
+    extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), 0, 0, -ztranslations[1]))
     extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), 0, -ytranslations[1], 0))
     extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), 0, -ytranslations[1], 0))
-    extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), 0, 0, ztranslation))
-    extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), 0, 0, ztranslation))
+    extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), 0, 0, ztranslations[1]))
+    extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), 0, 0, ztranslations[0]))
     extrusions.append(tuple([1, gmshOCC.addLine(gmshOCC.getMaxTag(0), center2_start)]))
     #Connecting the source and target base faces with lines:
     for i in range(8):
@@ -260,7 +260,10 @@ def matrixfibergeo_right(matrix_ID, transfinite_curves, angle = 30, but1 = 1/3, 
     #Next, we wull define the curve boundaries. To do so, we will primarily use the utility
     #function 'matrixPrismGenerator,' which fully defines the curves we wouls like
     #to make:
-    matrix = matrixPrismGenertor([[x_start, y_start, 0], [0, y_start, z_start]], width/2, [t/2, t/2], height/2)
+    if mat_ID == 22:
+        matrix = matrixPrismGenertor([[x_start, y_start, 0], [0, y_start, z_start]], [width/2, off], [t/2, t/2], [height/2, height/2])
+    else:
+        matrix = matrixPrismGenertor([[x_start, y_start, 0], [0, y_start, z_start]], [width/2, width/2], [t/2, t/2], [height/2, height/2])
     #Defining relevant curve loop variables (will become apparent later on):
     matbound_curveloop = [matrix[0][1][1], matrix[16]]
     #Geometries with multiple matrix bodies will have interseting points and lines
@@ -329,7 +332,9 @@ def matrixfibergeo_right(matrix_ID, transfinite_curves, angle = 30, but1 = 1/3, 
     extruded_entities = matrixPrismGenertor([[center_source[0] + square_source, center_source[1], 
                        center_source[2]], [center_target[0], center_target[1], 
                                            center_target[2] + square_target]], 
-                                           square_source, [square_source, square_target], square_target)
+                                           [square_source, square_source], 
+                                           [square_source, square_target], 
+                                           [square_target, square_target])
     #Defining relevant curve loop variables (will become apparent later on):
     extbound_curveloop = [extruded_entities[0][1][1], extruded_entities[16]]
 
@@ -564,6 +569,14 @@ def matrixfibergeo_right(matrix_ID, transfinite_curves, angle = 30, but1 = 1/3, 
                     ref_tag + 143, ref_tag + 138, ref_tag + 135, 
                     ref_tag + 130, ref_tag + 80, ref_tag + 84, 
                     ref_tag + 88, ref_tag + 92]
+    if mat_ID == 22:
+        sewed_curves = [ref_tag + 165, ref_tag + 170, ref_tag + 173, 
+                ref_tag + 178, ref_tag + 183, ref_tag + 188, 
+                ref_tag + 195, ref_tag + 200, ref_tag + 205, 
+                ref_tag + 160, ref_tag + 153, ref_tag + 148, 
+                ref_tag + 143, ref_tag + 140, ref_tag + 135, 
+                ref_tag + 130, ref_tag + 80, ref_tag + 84, 
+                ref_tag + 88, ref_tag + 92]
     connecting_curves = []
     for elem in all_curves:
         boundaries = gmshMOD.getBoundary([elem])
@@ -795,6 +808,7 @@ def matrixfibergeo_left(matrix_ID, transfinite_curves, angle = 30, but1 = 1/3, b
     d2 = d1*sin(ang*pi/180)
     d3 = cent - d2
     off_left = d3/cos(ang*pi/180)
+    off_left_corner = off_left - width/2
     start_left = length - off_left - N_fib*width
     x_start_left = -length + start_left + mat_ID*width
     y_start_left = t/2
@@ -802,7 +816,14 @@ def matrixfibergeo_left(matrix_ID, transfinite_curves, angle = 30, but1 = 1/3, b
     #Next, we wull define the curve boundaries. To do so, we will primarily use the utility
     #function 'matrixPrismGenerator,' which fully defines the curves we wouls like
     #to make:
-    matrix = matrixPrismGenertor([[x_start_left + width, y_start_left, -height_total], [-length, y_start_left, z_start_left + height]], width/2, [t/2, t/2], height/2)
+    if mat_ID == 22:
+        matrix = matrixPrismGenertor([[0, y_start_left, -height_total], 
+                                  [-length, y_start_left, z_start_left + height]], 
+                                  [off_left_corner, width/2], [t/2, t/2], [height/2, height/2])
+    else:
+        matrix = matrixPrismGenertor([[x_start_left + width, y_start_left, -height_total], 
+                                  [-length, y_start_left, z_start_left + height]], 
+                                  [width/2, width/2], [t/2, t/2], [height/2, height/2])
     #Defining relevant curve loop variables (will become apparent later on):
     matbound_curveloop = [matrix[0][1][1], matrix[16]]
     #Geometries with multiple matrix bodies will have interseting points and lines
@@ -871,7 +892,9 @@ def matrixfibergeo_left(matrix_ID, transfinite_curves, angle = 30, but1 = 1/3, b
     extruded_entities = matrixPrismGenertor([[center_source[0] + square_source, center_source[1], 
                        center_source[2]], [center_target[0], center_target[1], 
                                            center_target[2] + square_target]], 
-                                           square_source, [square_source, square_target], square_target)
+                                           [square_source, square_source], 
+                                           [square_source, square_target], 
+                                           [square_target, square_target])
     #Defining relevant curve loop variables (will become apparent later on):
     extbound_curveloop = [extruded_entities[0][1][1], extruded_entities[16]]
 
@@ -1104,6 +1127,12 @@ def matrixfibergeo_left(matrix_ID, transfinite_curves, angle = 30, but1 = 1/3, b
                     ref_tag + 150, ref_tag + 155, ref_tag + 158, ref_tag + 163,
                     ref_tag + 168, ref_tag + 175, ref_tag + 180, ref_tag + 185,
                     ref_tag + 190, ref_tag + 193, ref_tag + 198, ref_tag + 203]
+    if mat_ID == 22:
+        sewed_curves = [ref_tag + 80, ref_tag + 84, ref_tag + 88, ref_tag + 92,
+                    ref_tag + 128, ref_tag + 133, ref_tag + 140, ref_tag + 145,
+                    ref_tag + 150, ref_tag + 155, ref_tag + 160, ref_tag + 163,
+                    ref_tag + 168, ref_tag + 175, ref_tag + 180, ref_tag + 185,
+                    ref_tag + 190, ref_tag + 193, ref_tag + 198, ref_tag + 203]
     connecting_curves = []
     for elem in all_curves:
         boundaries = gmshMOD.getBoundary([elem])
@@ -1255,12 +1284,15 @@ def matrixfibergeo_left(matrix_ID, transfinite_curves, angle = 30, but1 = 1/3, b
           else:
               gmshMESH.setTransfiniteVolume(i)
 
-    #We're done, nice! If you read this far, go outside and eat some grass -_-
+    #We're done, nice! If you read this far, go outside and eat some grass -_- AGAIN
     #don't actually eat grass
     all_entities = gmshOCC.getEntities()
     gmshOCC.synchronize()
     
     return all_entities
+
+def matrixfibergeo_central(angle = 30, matrix_ID = 22):
+    return None
 
 def geometrygenerator(N):
     """
@@ -1276,9 +1308,21 @@ def geometrygenerator(N):
         all_all_entities.append(matrixfibergeo_left(i, [4, 5]))
     return all_all_entities
 
-numLayers = 5
+height = 11
+length = 6 
+cent = 0.22  #fiber centerline distance
+d = 0.12  #fiber diameter
+r = d/2  #fiber radius
+t = 0.2  #matrix thickness
+numLayers = 23
 
 geo = geometrygenerator(numLayers)
+
+#matrixfibergeo_right(22, [4, 5])
+#matrixfibergeo_left(21, [4, 5])
+#matrixfibergeo_left(22, [4, 5])
+#matrixfibergeo_central()
+#gmshOCC.addBox(0, 0, 0, -length, t, -height)
 
 gmshOCC.synchronize()
 
