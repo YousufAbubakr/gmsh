@@ -261,9 +261,11 @@ def matrixfibergeo_right(matrix_ID, transfinite_curves, angle = 30, but1 = 1/3, 
     #function 'matrixPrismGenerator,' which fully defines the curves we wouls like
     #to make:
     if mat_ID == 22:
-        matrix = matrixPrismGenertor([[x_start, y_start, 0], [0, y_start, z_start]], [width/2, off], [t/2, t/2], [height/2, height/2])
+        matrix = matrixPrismGenertor([[x_start, y_start, 0], [0, y_start, z_start]], 
+                                     [width/2, off], [t/2, t/2], [height/2, height/2])
     else:
-        matrix = matrixPrismGenertor([[x_start, y_start, 0], [0, y_start, z_start]], [width/2, width/2], [t/2, t/2], [height/2, height/2])
+        matrix = matrixPrismGenertor([[x_start, y_start, 0], [0, y_start, z_start]], 
+                                     [width/2, width/2], [t/2, t/2], [height/2, height/2])
     #Defining relevant curve loop variables (will become apparent later on):
     matbound_curveloop = [matrix[0][1][1], matrix[16]]
     #Geometries with multiple matrix bodies will have interseting points and lines
@@ -1291,7 +1293,119 @@ def matrixfibergeo_left(matrix_ID, transfinite_curves, angle = 30, but1 = 1/3, b
     
     return all_entities
 
-def matrixfibergeo_central(angle = 30, matrix_ID = 22):
+def matrixfibergeo_central(angle = 30, matrix_ID = 23):
+    #Key dimensions explained/defined in previous functions:
+    height_total = 11
+    length = 6
+    cent = 0.22  #fiber centerline distance
+    d = 0.12  #fiber diameter
+    r = d/2  #fiber radius
+    t = 0.2  #matrix thickness
+    ang = angle  #fiber orientation in deg
+
+    #The width of one of these matrix bodies projected onto the most
+    #bottom-most edge in the geometry in mm:
+    width = cent/cos(ang*pi/180)
+
+    #The height of one of these matrix bodies projected onto the most
+    #right-most edge in the geometry in mm:
+    height = cent/sin(ang*pi/180)
+    
+    #Number of fibers to the right of this corner offset matrix:
+    N_fib = 22
+
+    #Corner offset, which is a product of the unsymmetrical fiber geometries:
+    off = 0.08
+
+    #The corner fibers in this model are always going to be weird and are edge cases
+    #when defining a mesh for this geometry. Initially, it will be easier to ignore
+    #these cases and start meshing the full matrix-fiber bodies themselves. Based off
+    #of the SolidWorks parts, the origin (0, 0, 0) is defined as the bottom right hand
+    #corner with the non-matrix-fiber body and edge with the 0.08 mm offset.
+
+    #In dealing with this non-matrix-fiber body offset, the closest matrix body, which
+    #is to the left of the defined origin (negative x-value), has some starting x
+    #value for its right-most edge. After doing some trigonometry and geometry
+    #breakdowns, this offset is defined as:
+    start = length - width/2 - off - N_fib*width
+
+    #Additionally, for geometry/mesh preparation, it will useful to identify these
+    #matrix-fibers bodies by unique IDs. Starting off with the first offset matrix:
+    mat_ID = matrix_ID
+    
+    #To simplify the function-calling process, gmshOCC and gmshMOD is defined:
+    gmshOCC = gmsh.model.occ
+    gmshMOD = gmsh.model
+
+    #Geometry Generation
+    #The new origin:
+    #origin = gmshOCC.addPoint(-length, 0, -height)
+    
+    #Next, we wanna create the outer most boundaries of corner-most fiber. To do so,
+    #we first define the source and target faces by starting at on of their midpoints.
+    #This procedure will make more sense later on, when we define ellipse points.
+    #Some key variables include:
+    d1 = height_total - start*tan((90 - ang)*pi/180) - 24*height
+    d2 = d1*sin(ang*pi/180)
+    d3 = cent - d2
+    off_left = d3/cos(ang*pi/180)
+    off_left_corner = off_left - width/2
+    start_left = length - off_left - N_fib*width
+    x_start_left = -length + start_left + mat_ID*width
+    y_start_left = t/2
+    z_start_left = (length + x_start_left)/tan((ang)*pi/180) - height_total
+    
+    bot_corner = [-length, y_start_left, z_start_left + height]
+    
+    x_start = -start - mat_ID*width
+    y_start = t/2
+    z_start = -abs(x_start)*tan((90 - ang)*pi/180)
+    top_corner = [0, y_start, z_start]
+    
+    def matrixPrismGenertor_(centers, xtranslations, ytranslations, ztranslations):
+        """
+         matrixPrismGenertor(centers, xtranslations, ytranslations, ztranslations)
+    
+        Function that generates AND connects extruded curve enities for specific anti-parallel
+        matrix geometry in the CAD model. Function is under the assumption that desired
+        matrix geometry is a rectangular prism with centers on the source and target
+        face described in the list given by 'centers' and the translations that correspond
+        to the source face are in 'xtranslation' and the first element in 'ytranslations,'
+        and the translations that correspond to the target face are in 'ztranslations' and
+        the second element of 'ztranslations.'
+    
+        Returns list of extruded curve entities.
+        """
+        assert len(centers) == len(ytranslations), "Centers list must be the same length as y-translations list."
+        extrusions = []
+        #Defining the source point and creating extrusions to create base for source face:
+        center1_start = gmshOCC.addPoint(centers[0][0], centers[0][1], centers[0][2])
+        extrusions.append(gmshOCC.extrude([(0, center1_start)], 0, ytranslations[0], 0))
+        extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), -xtranslations[0], 0, 0))
+        extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), -xtranslations[1], 0, 0))
+        extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), 0, -ytranslations[0], 0))
+        extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), 0, -ytranslations[0], 0))
+        extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), xtranslations[1], 0, 0))
+        extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), xtranslations[0], 0, 0))
+        extrusions.append(tuple([1, gmshOCC.addLine(gmshOCC.getMaxTag(0), center1_start)]))
+        #Defining the target point and creating extrusions to create base for target face:
+        center2_start = gmshOCC.addPoint(centers[1][0], centers[1][1], centers[1][2])
+        extrusions.append(gmshOCC.extrude([(0, center2_start)], 0, ytranslations[1], 0))
+        extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), 0, 0, -ztranslations[0]))
+        extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), 0, 0, -ztranslations[1]))
+        extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), 0, -ytranslations[1], 0))
+        extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), 0, -ytranslations[1], 0))
+        extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), 0, 0, ztranslations[1]))
+        extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), 0, 0, ztranslations[0]))
+        extrusions.append(tuple([1, gmshOCC.addLine(gmshOCC.getMaxTag(0), center2_start)]))
+        #Connecting the source and target base faces with lines:
+        for i in range(8):
+            extrusions.append(gmshOCC.addLine(center1_start + i, center2_start + i))
+        return extrusions
+    
+    matrixPrismGenertor([[top_corner[0], top_corner[1], top_corner[2], 
+                         [bot_corner[0], bot_corner[1], bot_corner[2]]]], 
+                        [], [], [])
     return None
 
 def geometrygenerator(N):
