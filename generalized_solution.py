@@ -1293,7 +1293,7 @@ def matrixfibergeo_left(matrix_ID, transfinite_curves, angle = 30, but1 = 1/3, b
     
     return all_entities
 
-def matrixfibergeo_central(angle = 30, matrix_ID = 23):
+def matrixfibergeo_central(matrix_ID = 23, angle = 30):
     #Key dimensions explained/defined in previous functions:
     height_total = 11
     length = 6
@@ -1345,6 +1345,32 @@ def matrixfibergeo_central(angle = 30, matrix_ID = 23):
     #we first define the source and target faces by starting at on of their midpoints.
     #This procedure will make more sense later on, when we define ellipse points.
     #Some key variables include:
+    x_start = -start - mat_ID*width
+    y_start = t/2
+    z_start = -abs(x_start)*tan((90 - ang)*pi/180)
+    m = tan((90 - ang)*pi/180)
+    TRC_off = height_total - abs(z_start) - height
+    BLC_off = m*(-length) - z_start
+    
+    #Source face points:
+    point1 = gmshOCC.addPoint(0, y_start, z_start)
+    point2 = gmshOCC.addPoint(0, y_start + t/2, z_start)
+    point3 = gmshOCC.addPoint(0, y_start + t/2, z_start - height/2)
+    point4 = gmshOCC.addPoint(0, y_start + t/2, z_start - height - TRC_off)
+    point5 = gmshOCC.addPoint(0, y_start, z_start - height - TRC_off)
+    point6 = gmshOCC.addPoint(0, y_start - t/2, z_start - height - TRC_off)
+    point7 = gmshOCC.addPoint(0, y_start - t/2, z_start - height/2)
+    point8 = gmshOCC.addPoint(0, y_start - t/2, z_start)
+    #Source face lines:
+    line1 = gmshOCC.addLine(point1, point2)
+    line2 = gmshOCC.addLine(point2, point3)
+    line3 = gmshOCC.addLine(point3, point4)
+    line4 = gmshOCC.addLine(point4, point5)
+    line5 = gmshOCC.addLine(point5, point6)
+    line6 = gmshOCC.addLine(point6, point7)
+    line7 = gmshOCC.addLine(point7, point8)
+    line8 = gmshOCC.addLine(point8, point1)
+    #Additional key variables:
     d1 = height_total - start*tan((90 - ang)*pi/180) - 24*height
     d2 = d1*sin(ang*pi/180)
     d3 = cent - d2
@@ -1354,58 +1380,35 @@ def matrixfibergeo_central(angle = 30, matrix_ID = 23):
     x_start_left = -length + start_left + mat_ID*width
     y_start_left = t/2
     z_start_left = (length + x_start_left)/tan((ang)*pi/180) - height_total
+    #Target face points:
+    point9 = gmshOCC.addPoint(-length, y_start_left, z_start_left)
+    point10 = gmshOCC.addPoint(-length, y_start_left + t/2, z_start_left)
+    point11 = gmshOCC.addPoint(-length, y_start_left + t/2, z_start_left + height/2)
+    point12 = gmshOCC.addPoint(-length, y_start_left + t/2, z_start_left + height + BLC_off)
+    point13 = gmshOCC.addPoint(-length, y_start_left, z_start_left + height + BLC_off)
+    point14 = gmshOCC.addPoint(-length, y_start_left - t/2, z_start_left + height + BLC_off)
+    point15 = gmshOCC.addPoint(-length, y_start_left - t/2, z_start_left + height/2)
+    point16 = gmshOCC.addPoint(-length, y_start_left - t/2, z_start_left)
+    #Target face lines:
+    line9 = gmshOCC.addLine(point9, point10)
+    line10 = gmshOCC.addLine(point10, point11)
+    line11 = gmshOCC.addLine(point11, point12)
+    line12 = gmshOCC.addLine(point12, point13)
+    line13 = gmshOCC.addLine(point13, point14)
+    line14 = gmshOCC.addLine(point14, point15)
+    line15 = gmshOCC.addLine(point15, point16)
+    line16 = gmshOCC.addLine(point16, point9)
+    #Connecting source and target faces
+    gmshOCC.addLine(point1, point13)
+    gmshOCC.addLine(point2, point12)
+    gmshOCC.addLine(point3, point11)
+    gmshOCC.addLine(point4, point10)
+    gmshOCC.addLine(point5, point9)
+    gmshOCC.addLine(point6, point16)
+    gmshOCC.addLine(point7, point15)
+    gmshOCC.addLine(point8, point14)
     
-    bot_corner = [-length, y_start_left, z_start_left + height]
-    
-    x_start = -start - mat_ID*width
-    y_start = t/2
-    z_start = -abs(x_start)*tan((90 - ang)*pi/180)
-    top_corner = [0, y_start, z_start]
-    
-    def matrixPrismGenertor_(centers, xtranslations, ytranslations, ztranslations):
-        """
-         matrixPrismGenertor(centers, xtranslations, ytranslations, ztranslations)
-    
-        Function that generates AND connects extruded curve enities for specific anti-parallel
-        matrix geometry in the CAD model. Function is under the assumption that desired
-        matrix geometry is a rectangular prism with centers on the source and target
-        face described in the list given by 'centers' and the translations that correspond
-        to the source face are in 'xtranslation' and the first element in 'ytranslations,'
-        and the translations that correspond to the target face are in 'ztranslations' and
-        the second element of 'ztranslations.'
-    
-        Returns list of extruded curve entities.
-        """
-        assert len(centers) == len(ytranslations), "Centers list must be the same length as y-translations list."
-        extrusions = []
-        #Defining the source point and creating extrusions to create base for source face:
-        center1_start = gmshOCC.addPoint(centers[0][0], centers[0][1], centers[0][2])
-        extrusions.append(gmshOCC.extrude([(0, center1_start)], 0, ytranslations[0], 0))
-        extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), -xtranslations[0], 0, 0))
-        extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), -xtranslations[1], 0, 0))
-        extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), 0, -ytranslations[0], 0))
-        extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), 0, -ytranslations[0], 0))
-        extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), xtranslations[1], 0, 0))
-        extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), xtranslations[0], 0, 0))
-        extrusions.append(tuple([1, gmshOCC.addLine(gmshOCC.getMaxTag(0), center1_start)]))
-        #Defining the target point and creating extrusions to create base for target face:
-        center2_start = gmshOCC.addPoint(centers[1][0], centers[1][1], centers[1][2])
-        extrusions.append(gmshOCC.extrude([(0, center2_start)], 0, ytranslations[1], 0))
-        extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), 0, 0, -ztranslations[0]))
-        extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), 0, 0, -ztranslations[1]))
-        extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), 0, -ytranslations[1], 0))
-        extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), 0, -ytranslations[1], 0))
-        extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), 0, 0, ztranslations[1]))
-        extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), 0, 0, ztranslations[0]))
-        extrusions.append(tuple([1, gmshOCC.addLine(gmshOCC.getMaxTag(0), center2_start)]))
-        #Connecting the source and target base faces with lines:
-        for i in range(8):
-            extrusions.append(gmshOCC.addLine(center1_start + i, center2_start + i))
-        return extrusions
-    
-    matrixPrismGenertor([[top_corner[0], top_corner[1], top_corner[2], 
-                         [bot_corner[0], bot_corner[1], bot_corner[2]]]], 
-                        [], [], [])
+    gmshOCC.synchronize()
     return None
 
 def geometrygenerator(N):
@@ -1435,7 +1438,7 @@ geo = geometrygenerator(numLayers)
 #matrixfibergeo_right(22, [4, 5])
 #matrixfibergeo_left(21, [4, 5])
 #matrixfibergeo_left(22, [4, 5])
-#matrixfibergeo_central()
+matrixfibergeo_central()
 #gmshOCC.addBox(0, 0, 0, -length, t, -height)
 
 gmshOCC.synchronize()
