@@ -139,7 +139,7 @@ def curveLoopGenerator(curveTags, loopBools, iterNums, jumpBools, curveJump = 1,
     #print("Curve Loops being defined: ", curveLoopLst)
     return surfLoopLst
 
-def surfaceLoopGenerator(surfTags, loopBools, iterNums, jumpBools, surfJump = 1):
+def surfaceLoopGenerator(surfTags, loopBools, iterNums, jumpBools, surfJump = 1, sewBool = True):
     """
      surfaceLoopGenerator(surfTags, loopBools, iterNums, jumpBools, surfJump = 1)
 
@@ -179,7 +179,7 @@ def surfaceLoopGenerator(surfTags, loopBools, iterNums, jumpBools, surfJump = 1)
     volLst = []
     for elem in surfLoopLst:
         #print(list(elem))
-        surfs = gmshOCC.addSurfaceLoop(list(elem), -1, True)
+        surfs = gmshOCC.addSurfaceLoop(list(elem), -1, sewBool)
         volLst.append(gmshOCC.addVolume([surfs]))
     #print("Surface Loops being defined: ", surfLoopLst)
     return volLst
@@ -258,7 +258,7 @@ def matrixfibergeo_right(matrix_ID, transfinite_curves, angle = 30, but1 = 1/3, 
     y_start = t/2
     z_start = -abs(x_start)*tan((90 - ang)*pi/180)
     #Next, we wull define the curve boundaries. To do so, we will primarily use the utility
-    #function 'matrixPrismGenerator,' which fully defines the curves we wouls like
+    #function 'matrixPrismGenerator,' which fully defines the curves we would like
     #to make:
     if mat_ID == 22:
         matrix = matrixPrismGenertor([[x_start, y_start, 0], [0, y_start, z_start]], 
@@ -390,7 +390,7 @@ def matrixfibergeo_right(matrix_ID, transfinite_curves, angle = 30, but1 = 1/3, 
             matrix_dimtags.append(elem)
     matrix_dimtags_source = matrix_dimtags[:8]
     matrix_dimtags_target = matrix_dimtags[8:len(extruded_dimtags)]
-    
+
     gmshOCC.synchronize()
     
     #Using 'getBoundary' to obtain boundary points of curves defined in
@@ -1293,7 +1293,7 @@ def matrixfibergeo_left(matrix_ID, transfinite_curves, angle = 30, but1 = 1/3, b
     
     return all_entities
 
-def matrixfibergeo_central(matrix_ID = 23, angle = 30):
+def matrixfibergeo_central(matrix_ID = 23, angle = 30, but1 = 2/9, but2 = 2/9):
     #Key dimensions explained/defined in previous functions:
     height_total = 11
     length = 6
@@ -1362,53 +1362,268 @@ def matrixfibergeo_central(matrix_ID = 23, angle = 30):
     point7 = gmshOCC.addPoint(0, y_start - t/2, z_start - height/2)
     point8 = gmshOCC.addPoint(0, y_start - t/2, z_start)
     #Source face lines:
-    line1 = gmshOCC.addLine(point1, point2)
-    line2 = gmshOCC.addLine(point2, point3)
-    line3 = gmshOCC.addLine(point3, point4)
-    line4 = gmshOCC.addLine(point4, point5)
-    line5 = gmshOCC.addLine(point5, point6)
-    line6 = gmshOCC.addLine(point6, point7)
-    line7 = gmshOCC.addLine(point7, point8)
-    line8 = gmshOCC.addLine(point8, point1)
+    source_mat_curves = []
+    source_mat_curves.append(gmshOCC.addLine(point1, point2)) 
+    source_mat_curves.append(gmshOCC.addLine(point2, point3)) 
+    source_mat_curves.append(gmshOCC.addLine(point3, point4))
+    source_mat_curves.append(gmshOCC.addLine(point4, point5))
+    source_mat_curves.append(gmshOCC.addLine(point5, point6))
+    source_mat_curves.append(gmshOCC.addLine(point6, point7))
+    source_mat_curves.append(gmshOCC.addLine(point7, point8))
+    source_mat_curves.append(gmshOCC.addLine(point8, point1))
+    curve_ref = source_mat_curves[0]
     #Additional key variables:
     d1 = height_total - start*tan((90 - ang)*pi/180) - 24*height
     d2 = d1*sin(ang*pi/180)
     d3 = cent - d2
     off_left = d3/cos(ang*pi/180)
-    off_left_corner = off_left - width/2
+    #off_left_corner = off_left - width/2
     start_left = length - off_left - N_fib*width
     x_start_left = -length + start_left + mat_ID*width
     y_start_left = t/2
     z_start_left = (length + x_start_left)/tan((ang)*pi/180) - height_total
     #Target face points:
-    point9 = gmshOCC.addPoint(-length, y_start_left, z_start_left)
-    point10 = gmshOCC.addPoint(-length, y_start_left + t/2, z_start_left)
+    point9 = gmshOCC.addPoint(-length, y_start_left, z_start_left + height + BLC_off)
+    point10 = gmshOCC.addPoint(-length, y_start_left + t/2, z_start_left + height + BLC_off)
     point11 = gmshOCC.addPoint(-length, y_start_left + t/2, z_start_left + height/2)
-    point12 = gmshOCC.addPoint(-length, y_start_left + t/2, z_start_left + height + BLC_off)
-    point13 = gmshOCC.addPoint(-length, y_start_left, z_start_left + height + BLC_off)
-    point14 = gmshOCC.addPoint(-length, y_start_left - t/2, z_start_left + height + BLC_off)
+    point12 = gmshOCC.addPoint(-length, y_start_left + t/2, z_start_left)
+    point13 = gmshOCC.addPoint(-length, y_start_left, z_start_left)
+    point14 = gmshOCC.addPoint(-length, y_start_left - t/2, z_start_left)
     point15 = gmshOCC.addPoint(-length, y_start_left - t/2, z_start_left + height/2)
-    point16 = gmshOCC.addPoint(-length, y_start_left - t/2, z_start_left)
+    point16 = gmshOCC.addPoint(-length, y_start_left - t/2, z_start_left + height + BLC_off)
     #Target face lines:
-    line9 = gmshOCC.addLine(point9, point10)
-    line10 = gmshOCC.addLine(point10, point11)
-    line11 = gmshOCC.addLine(point11, point12)
-    line12 = gmshOCC.addLine(point12, point13)
-    line13 = gmshOCC.addLine(point13, point14)
-    line14 = gmshOCC.addLine(point14, point15)
-    line15 = gmshOCC.addLine(point15, point16)
-    line16 = gmshOCC.addLine(point16, point9)
+    target_mat_curves = []
+    target_mat_curves.append(gmshOCC.addLine(point9, point10))
+    target_mat_curves.append(gmshOCC.addLine(point10, point11))
+    target_mat_curves.append(gmshOCC.addLine(point11, point12))
+    target_mat_curves.append(gmshOCC.addLine(point12, point13))
+    target_mat_curves.append(gmshOCC.addLine(point13, point14))
+    target_mat_curves.append(gmshOCC.addLine(point14, point15))
+    target_mat_curves.append(gmshOCC.addLine(point15, point16))
+    target_mat_curves.append(gmshOCC.addLine(point16, point9))
     #Connecting source and target faces
-    gmshOCC.addLine(point1, point13)
-    gmshOCC.addLine(point2, point12)
+    gmshOCC.addLine(point1, point9)
+    gmshOCC.addLine(point2, point10)
     gmshOCC.addLine(point3, point11)
-    gmshOCC.addLine(point4, point10)
-    gmshOCC.addLine(point5, point9)
-    gmshOCC.addLine(point6, point16)
+    gmshOCC.addLine(point4, point12)
+    gmshOCC.addLine(point5, point13)
+    gmshOCC.addLine(point6, point14)
     gmshOCC.addLine(point7, point15)
-    gmshOCC.addLine(point8, point14)
+    gmshOCC.addLine(point8, point16)
     
+    #Next, we wanna create the geometry for the fiber volumes, which are really
+    #elliptical cutouts in the matrix geometry. We start off be defining the
+    #ellipse centers on each of the matrix source and target faces:
+    #x_ell_start = x_start - width/2
+    y_ell_start = t/2
+    z_ell_start = z_start - height/2
+    maj_axis = r*sec((90 - ang)*pi/180)  #ellipse dimensions
+    min_axis = r
+    center_source = [0, y_ell_start, z_ell_start]
+    
+    #Additionally, we will defining a relevant point variable (will become apparent later on):
+    point_ref_tag = gmshOCC.addPoint(center_source[0], center_source[1], center_source[2])
+    #For mat_ID = 0, point_ref_tag = 17
+    #Next, we define source_ell and target_ell that stores the generated ellipse
+    #curve data to be able to generate coneecting lines between source and
+    #target face ellipses
+    source_ell = []
+    target_ell = []
+    for i in range(8):
+        source_ell.append(gmshOCC.addEllipse(center_source[0], center_source[1], center_source[2], maj_axis, 
+                                             min_axis, -1, i*pi/4, (i + 1)*pi/4))
+        #Because the addEllipse function does not allow you to define the orientation
+        #in which the ellipse is defined, we must automatically rotate its curves
+        #to define it for our model:
+        gmshOCC.rotate([(1, source_ell[-1])], center_source[0], center_source[1], center_source[2], 0, -1, 0, pi/2)
+    
+    #x_ell_start = x_start_left + width/2
+    y_ell_start = t/2
+    z_ell_start = z_start_left + height/2
+    center_target = [-length, y_ell_start, z_ell_start]
+    gmshOCC.addPoint(center_target[0], center_target[1], center_target[2])
+    for i in range(8):
+        target_ell.append(gmshOCC.addEllipse(center_target[0], center_target[1], center_target[2], maj_axis, 
+                                             min_axis, -1, i*pi/4, (i + 1)*pi/4))
+        #Because the addEllipse function does not allow you to define the orientation
+        #in which the ellipse is defined, we must automatically rotate its curves
+        #to define it for our model:
+        gmshOCC.rotate([(1, target_ell[-1])], center_target[0], center_target[1], center_target[2], 0, -1, 0, pi/2)
+    #Current gmsh model needs to be synchronized onto OpenCASCADE CAD representation
+    #in order to use stored source_ell and target_ell data
+    #NOTE, generally you want to be able to reduce the number of times you
+    #synchronize your model because it generally uses a nontrivial amount of memory
     gmshOCC.synchronize()
+    
+    s_ellipse_boundary = []
+    t_ellipse_boundary = []
+    for source, target in zip(source_ell, target_ell):
+        s_ellipse_boundary.append(gmshMOD.getBoundary([(1, source)]))
+        t_ellipse_boundary.append(gmshMOD.getBoundary([(1, target)]))
+        ellipse_source_boundary = gmshMOD.getBoundary([(1, source)])
+        ellipse_target_boundary = gmshMOD.getBoundary([(1, target)])
+        #Connecting the source and target base faces with lines:
+        gmshOCC.addLine(ellipse_source_boundary[0][1], ellipse_target_boundary[0][1])
+    
+    #Next, we need to create our third, final primary structural component of our
+    #mesh: the Butterfly Prism in the center of the ellipse structure. To do so,
+    #we define some key geometric variables:
+    butterfly_ratio_1 = but1
+    butterfly_ratio_2 = but2
+    square_source =  butterfly_ratio_1*maj_axis
+    square_target =  butterfly_ratio_2*maj_axis
+    #Next, we wull define the curve boundaries. To do so, we will primarily use the utility
+    #function 'matrixPrismGenerator,' which fully defines the curves we wouls like
+    #to make:
+    
+    extrusions = []
+    #Defining the source point and creating extrusions to create base for source face:
+    center1_start = gmshOCC.addPoint(center_source[0], center_source[1], center_source[2] + square_source)
+    extrusions.append(gmshOCC.extrude([(0, center1_start)], 0, square_source, 0))
+    extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), 0, 0, -square_source))
+    extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), 0, 0, -square_source))
+    extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), 0, -square_source, 0))
+    extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), 0, -square_source, 0))
+    extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), 0, 0, square_source))
+    extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), 0, 0, square_source))
+    extrusions.append(tuple([1, gmshOCC.addLine(gmshOCC.getMaxTag(0), center1_start)]))
+    #Defining the target point and creating extrusions to create base for target face:
+    center2_start = gmshOCC.addPoint(center_target[0], center_target[1], center_target[2] + square_target)
+    extrusions.append(gmshOCC.extrude([(0, center2_start)], 0, square_target, 0))
+    extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), 0, 0, -square_target))
+    extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), 0, 0, -square_target))
+    extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), 0, -square_target, 0))
+    extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), 0, -square_target, 0))
+    extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), 0, 0, square_target))
+    extrusions.append(gmshOCC.extrude(dimTagReturner(0, extrusions[-1]), 0, 0, square_target))
+    extrusions.append(tuple([1, gmshOCC.addLine(gmshOCC.getMaxTag(0), center2_start)]))
+    #Connecting the source and target base faces with lines:
+    for i in range(8):
+        extrusions.append(gmshOCC.addLine(center1_start + i, center2_start + i))
+                         
+    gmshOCC.synchronize()
+    #Now that we've created all of the main meshing bodies, we have to define the
+    #lines that connect these bodies. To do, we have to do a lot of data sorting
+    #with the curve entities to obtain the boundary points that define these curves.
+    #First, we get specifically the dim = 1 extruded entitiy data from the previous
+    #command defined in 'extruded_entities':
+    extruded_curves = [dimTagReturner(1, elem) if type(elem) is list else elem for elem in extrusions]
+    extruded_dimtags = []
+    for elem in extruded_curves:
+        if type(elem) is list:
+            extruded_dimtags.append(elem[0])
+        else:
+            extruded_dimtags.append(elem)
+    extruded_dimtags_source = extruded_dimtags[:8]
+    extruded_dimtags_target = extruded_dimtags[8:len(extruded_dimtags)]
+             
+    #Synchronize model to access .model function 'getBoundary'
+    gmshOCC.synchronize()
+    
+    #Using 'getBoundary' to obtain boundary points of curves defined in
+    #'extruded_dimtags_source' and 'extruded_dimtags_target'
+    s_extruded_boundary = []
+    t_extruded_boundary = []
+    for source, target in zip(extruded_dimtags_source, extruded_dimtags_target):
+        s_extruded_boundary.append(gmshMOD.getBoundary([source]))
+        t_extruded_boundary.append(gmshMOD.getBoundary([target]))
+    #Putting everything together to draw out the boundary point tags to use to 
+    #add connecting lines between butterfly prism and ellipse boundaries
+    s_extruded_boundary[-1].reverse()
+    for ellipse, extruded in zip(s_ellipse_boundary, s_extruded_boundary):
+        ellipse_source_point = ellipse[0][1]
+        extruded_source_point = extruded[0][1]
+        gmshOCC.addLine(ellipse_source_point, extruded_source_point)
+    t_extruded_boundary[-1].reverse()
+    for ellipse, extruded in zip(t_ellipse_boundary, t_extruded_boundary):
+        ellipse_target_point = ellipse[0][1]
+        extruded_target_point = extruded[0][1]
+        gmshOCC.addLine(ellipse_target_point, extruded_target_point)
+        
+    gmshOCC.synchronize()
+    
+    #Using 'getBoundary' to obtain boundary points of curves defined in
+    #'extruded_dimtags_source' and 'extruded_dimtags_target'
+    s_matrix_boundary = []
+    t_matrix_boundary = []
+    for source, target in zip(source_mat_curves, target_mat_curves):
+        s_matrix_boundary.append(gmshMOD.getBoundary([(1, source)]))
+        t_matrix_boundary.append(gmshMOD.getBoundary([(1, target)]))
+    #Putting everything together to draw out the boundary point tags to use to 
+    #add connecting lines between butterfly prism and ellipse boundaries
+    s_matrix_boundary[-1].reverse()
+    for ellipse, matrix in zip(s_ellipse_boundary, s_matrix_boundary):
+        ellipse_source_point = ellipse[0][1]
+        matrix_source_point = matrix[0][1]
+        gmshOCC.addLine(ellipse_source_point, matrix_source_point)
+    t_matrix_boundary[-1].reverse()
+    for ellipse, matrix in zip(t_ellipse_boundary, t_matrix_boundary):
+        ellipse_target_point = ellipse[0][1]
+        matrix_target_point = matrix[0][1]
+        gmshOCC.addLine(ellipse_target_point, matrix_target_point)
+        
+    surf_ref_lst = curveLoopGenerator([curve_ref, curve_ref + 17, curve_ref + 8, curve_ref + 16], 
+                       [False, True, False, False], 8, 
+                       [False, False, False, False])
+    
+    curveLoopGenerator([curve_ref + 48, curve_ref + 65, curve_ref + 56, curve_ref + 64], 
+                       [False, True, False, False], 8, 
+                       [False, False, False, False])
+    
+    curveLoopGenerator([curve_ref + 40, curve_ref + 72, curve_ref + 64, curve_ref + 80], 
+                       [False, False, False, False], 8, 
+                       [False, False, False, False])
+       
+    curveLoopGenerator([curve_ref + 88, curve_ref + 40, curve_ref + 96, curve_ref + 16], 
+                       [False, False, False, False], 8, 
+                       [False, False, False, False])
+    
+    curveLoopGenerator([curve_ref + 24, curve_ref + 41, curve_ref + 32, curve_ref + 40], 
+                       [False, True, False, False], 8, 
+                       [False, False, False, False])
+    
+    curveLoopGenerator([curve_ref + 8, curve_ref + 97, curve_ref + 32, curve_ref + 96], 
+                       [False, True, False, False], 8, 
+                       [False, False, False, False])
+    
+    curveLoopGenerator([curve_ref, curve_ref + 89, curve_ref + 24, curve_ref + 88], 
+                       [False, True, False, False], 8, 
+                       [False, False, False, False])
+    
+    curveLoopGenerator([curve_ref + 32, curve_ref + 81, curve_ref + 56, curve_ref + 80], 
+                       [False, True, False, False], 8, 
+                       [False, False, False, False])
+   
+    curveLoopGenerator([curve_ref + 24, curve_ref + 73, curve_ref + 48, curve_ref + 72], 
+                       [False, True, False, False], 8, 
+                       [False, False, False, False])
+    
+    curveLoopGenerator([curve_ref + 56, curve_ref + 57, curve_ref + 58, curve_ref + 59, 
+                        curve_ref + 60, curve_ref + 61, curve_ref + 62, curve_ref + 63], 
+                       [False, False, False, False, False, False, False, False], 1, 
+                       [False, False, False, False, False, False, False, False])
+    
+    curveLoopGenerator([curve_ref + 48, curve_ref + 49, curve_ref + 50, curve_ref + 51,
+                        curve_ref + 52, curve_ref + 53, curve_ref + 54, curve_ref + 55], 
+                       [False, False, False, False, False, False, False, False], 1, 
+                       [False, False, False, False, False, False, False, False])
+    surf_ref = surf_ref_lst[0]
+    
+    surfaceLoopGenerator([surf_ref, surf_ref + 25, surf_ref + 32, 
+                          surf_ref + 24, surf_ref + 40 , surf_ref + 48], 
+                         [False, True, False, False, False, False], 8, 
+                         [False, False, False, False, False, False])
+    
+    surfaceLoopGenerator([surf_ref + 32, surf_ref + 17, surf_ref + 8, 
+                          surf_ref + 16, surf_ref + 56 , surf_ref + 64], 
+                         [False, True, False, False, False, False], 8, 
+                         [False, False, False, False, False, False])
+    
+    #surfaceLoopGenerator([surf_ref + 32, surf_ref + 17, surf_ref + 8, 
+                          #surf_ref + 16, surf_ref + 56 , surf_ref + 64], 
+                         #[False, True, False, False, False, False], 1, 
+                         #[False, False, False, False, False, False])
+    
     return None
 
 def geometrygenerator(N):
@@ -1433,10 +1648,9 @@ r = d/2  #fiber radius
 t = 0.2  #matrix thickness
 numLayers = 23
 
-geo = geometrygenerator(numLayers)
+#geo = geometrygenerator(numLayers)
 
 #matrixfibergeo_right(22, [4, 5])
-#matrixfibergeo_left(21, [4, 5])
 #matrixfibergeo_left(22, [4, 5])
 matrixfibergeo_central()
 #gmshOCC.addBox(0, 0, 0, -length, t, -height)
