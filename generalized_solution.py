@@ -1293,7 +1293,7 @@ def matrixfibergeo_left(matrix_ID, transfinite_curves, angle = 30, but1 = 1/3, b
     
     return all_entities
 
-def matrixfibergeo_central(matrix_ID = 23, angle = 30, but1 = 2/9, but2 = 2/9):
+def matrixfibergeo_central(transfinite_curves, matrix_ID = 23, angle = 30, but1 = 2/9, but2 = 2/9):
     #Key dimensions explained/defined in previous functions:
     height_total = 11
     length = 6
@@ -1354,6 +1354,7 @@ def matrixfibergeo_central(matrix_ID = 23, angle = 30, but1 = 2/9, but2 = 2/9):
     
     #Source face points:
     point1 = gmshOCC.addPoint(0, y_start, z_start)
+    point_ref_tag = point1
     point2 = gmshOCC.addPoint(0, y_start + t/2, z_start)
     point3 = gmshOCC.addPoint(0, y_start + t/2, z_start - height/2)
     point4 = gmshOCC.addPoint(0, y_start + t/2, z_start - height - TRC_off)
@@ -1422,7 +1423,7 @@ def matrixfibergeo_central(matrix_ID = 23, angle = 30, but1 = 2/9, but2 = 2/9):
     center_source = [0, y_ell_start, z_ell_start]
     
     #Additionally, we will defining a relevant point variable (will become apparent later on):
-    point_ref_tag = gmshOCC.addPoint(center_source[0], center_source[1], center_source[2])
+    gmshOCC.addPoint(center_source[0], center_source[1], center_source[2])
     #For mat_ID = 0, point_ref_tag = 17
     #Next, we define source_ell and target_ell that stores the generated ellipse
     #curve data to be able to generate coneecting lines between source and
@@ -1566,6 +1567,24 @@ def matrixfibergeo_central(matrix_ID = 23, angle = 30, but1 = 2/9, but2 = 2/9):
                        [False, True, False, False], 8, 
                        [False, False, False, False])
     
+    #Butterfly prism (4 grouped surfaces):
+    curves1 = gmshOCC.addCurveLoop([curve_ref + 63, curve_ref + 56, 
+                                    curve_ref + 65, curve_ref + 48, 
+                                    curve_ref + 55, curve_ref + 71])
+    gmshOCC.addSurfaceFilling(curves1)
+    curves2 = gmshOCC.addCurveLoop([curve_ref + 57, curve_ref + 58, 
+                                    curve_ref + 67, curve_ref + 50, 
+                                    curve_ref + 49, curve_ref + 65])
+    gmshOCC.addSurfaceFilling(curves2)
+    curves3 = gmshOCC.addCurveLoop([curve_ref + 59, curve_ref + 60, 
+                                    curve_ref + 69, curve_ref + 52, 
+                                    curve_ref + 51, curve_ref + 67])
+    gmshOCC.addSurfaceFilling(curves3)
+    curves4 = gmshOCC.addCurveLoop([curve_ref + 61, curve_ref + 62, 
+                                    curve_ref + 71, curve_ref + 54, 
+                                    curve_ref + 53, curve_ref + 69])
+    gmshOCC.addSurfaceFilling(curves4)
+    
     curveLoopGenerator([curve_ref + 48, curve_ref + 65, curve_ref + 56, curve_ref + 64], 
                        [False, True, False, False], 8, 
                        [False, False, False, False])
@@ -1609,22 +1628,126 @@ def matrixfibergeo_central(matrix_ID = 23, angle = 30, but1 = 2/9, but2 = 2/9):
                        [False, False, False, False, False, False, False, False])
     surf_ref = surf_ref_lst[0]
     
-    surfaceLoopGenerator([surf_ref, surf_ref + 25, surf_ref + 32, 
-                          surf_ref + 24, surf_ref + 40 , surf_ref + 48], 
+    vol_references = surfaceLoopGenerator([surf_ref, surf_ref + 29, surf_ref + 36, 
+                          surf_ref + 28, surf_ref + 52 , surf_ref + 44], 
+                         [False, True, False, False, False, False], 8, 
+                         [False, False, False, False, False, False])
+    vol_ref = vol_references[0]
+    surfaceLoopGenerator([surf_ref + 36, surf_ref + 21, surf_ref + 12, 
+                          surf_ref + 20, surf_ref + 68 , surf_ref + 60], 
                          [False, True, False, False, False, False], 8, 
                          [False, False, False, False, False, False])
     
-    surfaceLoopGenerator([surf_ref + 32, surf_ref + 17, surf_ref + 8, 
-                          surf_ref + 16, surf_ref + 56 , surf_ref + 64], 
-                         [False, True, False, False, False, False], 8, 
+    surfaceLoopGenerator([surf_ref + 8, surf_ref + 9, surf_ref + 10, 
+                          surf_ref + 11, surf_ref + 76, surf_ref + 77], 
+                         [False, False, False, False, False, False], 1, 
                          [False, False, False, False, False, False])
+    gmshOCC.synchronize()
     
-    #surfaceLoopGenerator([surf_ref + 32, surf_ref + 17, surf_ref + 8, 
-                          #surf_ref + 16, surf_ref + 56 , surf_ref + 64], 
-                         #[False, True, False, False, False, False], 1, 
-                         #[False, False, False, False, False, False])
+    #Transfinite Settings:
+    #Useful tagging variables:
+    maxLTag = gmshOCC.getMaxTag(1)
+    maxSTag = gmshOCC.getMaxTag(2)
+    maxVTag = gmshOCC.getMaxTag(3)
+    #We want to be able to specify the number of nodes on certain types of curves.
+    #In this model, there are two main types of curves: source/target face curves
+    #and connecting, intermediate curves. To do obtain this curve data, we concatenate 
+    #a list of all the curve dimensions that are in between the sourve and target faces:
+    all_curves = gmshOCC.getEntities(1)
+    #All of connecting curves were generated in the surface sewing process,
+    #most of whom, were out of order, so we specify these curves manually in 'sewed_curves':
+    sewed_curves = [curve_ref + 153, curve_ref + 157, curve_ref + 160, 
+                    curve_ref + 164, curve_ref + 168, curve_ref + 172, 
+                    curve_ref + 177, curve_ref + 181, curve_ref + 185, 
+                    curve_ref + 190, curve_ref + 200, curve_ref + 205, 
+                    curve_ref + 210, curve_ref + 215, curve_ref + 220,
+                    curve_ref + 40]
+    connecting_curves = []
+    for elem in all_curves:
+        boundaries = gmshMOD.getBoundary([elem])
+        if boundaries[1][1] - boundaries[0][1] == 8 or boundaries[1][1] - boundaries[0][1] == 16:
+            connecting_curves.append(elem)
+        elif elem[1] in sewed_curves:
+            connecting_curves.append(elem)
+    connecting_curves_tags = [elem[1] for elem in connecting_curves]
+    #Based off of whether the curve is 'connecting' or 'source' and 'target',
+    #we will define a transfinite curve with numNodes determined by this functions
+    #'transfinite_curves' variable:
+    s_and_t = transfinite_curves[0]
+    inter = transfinite_curves[1]
+    for i in range(curve_ref - 48, maxLTag + 1):
+        if i in connecting_curves_tags:
+            gmshMESH.setTransfiniteCurve(i, inter)
+        else:
+            gmshMESH.setTransfiniteCurve(i, s_and_t)
+    print(connecting_curves_tags)
+    #In defining transfinite surfaces, there are also special cases (mostly related
+    #to the not well-defined ellipse regions) that we have to define the outer
+    #pointTags for. Additionally, we will also use the corresponding point tag
+    #reference variable, 'point_ref_tag' to describe the relevant point tags for
+    #each matrix ID:
+    for i in range(surf_ref, maxSTag + 1):
+         if i == surf_ref + 76:
+             gmshMESH.setTransfiniteSurface(i, "Left", [point_ref_tag + 59, 
+                                                        point_ref_tag + 61, 
+                                                        point_ref_tag + 63, 
+                                                        point_ref_tag + 65])
+             gmshMESH.setRecombine(2, i)
+         elif i == surf_ref + 77:
+             gmshMESH.setTransfiniteSurface(i, "Left", [point_ref_tag + 51, 
+                                                        point_ref_tag + 53, 
+                                                        point_ref_tag + 55, 
+                                                        point_ref_tag + 57])
+             gmshMESH.setRecombine(2, i)
+         elif i == surf_ref + 8:
+             gmshMESH.setTransfiniteSurface(i, "Left", [point_ref_tag + 65, 
+                                                        point_ref_tag + 59, 
+                                                        point_ref_tag + 51, 
+                                                        point_ref_tag + 57])
+             gmshMESH.setRecombine(2, i)
+         elif i == surf_ref + 9:
+             gmshMESH.setTransfiniteSurface(i, "Left", [point_ref_tag + 59, 
+                                                        point_ref_tag + 61, 
+                                                        point_ref_tag + 51, 
+                                                        point_ref_tag + 53])
+             gmshMESH.setRecombine(2, i)
+         elif i == surf_ref + 10:
+             gmshMESH.setTransfiniteSurface(i, "Left", [point_ref_tag + 61, 
+                                                        point_ref_tag + 63, 
+                                                        point_ref_tag + 53, 
+                                                        point_ref_tag + 55])
+             gmshMESH.setRecombine(2, i)
+         elif i == surf_ref + 11:
+             gmshMESH.setTransfiniteSurface(i, "Left", [point_ref_tag + 63, 
+                                                        point_ref_tag + 65, 
+                                                        point_ref_tag + 55, 
+                                                        point_ref_tag + 57])
+             gmshMESH.setRecombine(2, i)    
+         else:
+             gmshMESH.setTransfiniteSurface(i)
+             gmshMESH.setRecombine(2, i)
     
-    return None
+    #There is only one special case in defining transfinite volumes for the central
+    #butterfly region, which we define accordingly:
+    for i in range(vol_ref, maxVTag + 1):
+          if i == maxVTag:
+              gmshMESH.setTransfiniteVolume(i, [point_ref_tag + 59, 
+                                                point_ref_tag + 61, 
+                                                point_ref_tag + 63, 
+                                                point_ref_tag + 65, 
+                                                point_ref_tag + 51, 
+                                                point_ref_tag + 53, 
+                                                point_ref_tag + 55, 
+                                                point_ref_tag + 57])
+          else:
+              gmshMESH.setTransfiniteVolume(i)
+    
+    #We're done, nice! If you read this far, go outside and eat some grass -_-
+    #don't actually eat grass
+    all_entities = gmshOCC.getEntities()
+    gmsh.model.occ.synchronize()
+    
+    return all_entities
 
 def geometrygenerator(N):
     """
@@ -1646,13 +1769,13 @@ cent = 0.22  #fiber centerline distance
 d = 0.12  #fiber diameter
 r = d/2  #fiber radius
 t = 0.2  #matrix thickness
-numLayers = 23
+#numLayers = 23
 
 #geo = geometrygenerator(numLayers)
 
 #matrixfibergeo_right(22, [4, 5])
 #matrixfibergeo_left(22, [4, 5])
-matrixfibergeo_central()
+matrixfibergeo_central([4, 5])
 #gmshOCC.addBox(0, 0, 0, -length, t, -height)
 
 gmshOCC.synchronize()
