@@ -711,7 +711,6 @@ def matrixfibergeo_right(matrix_ID, transfinite_curves, angle = 30, but1 = 1/3, 
                                                         point_ref_tag + 47, 
                                                         point_ref_tag + 49])
              gmshMESH.setRecombine(2, i)
-
          else:
              gmshMESH.setTransfiniteSurface(i)
              gmshMESH.setRecombine(2, i) 
@@ -1661,7 +1660,12 @@ def matrixfibergeo_central(transfinite_curves, matrix_ID = 23, angle = 30, but1 
                     curve_ref + 177, curve_ref + 181, curve_ref + 185, 
                     curve_ref + 190, curve_ref + 200, curve_ref + 205, 
                     curve_ref + 210, curve_ref + 215, curve_ref + 220,
-                    curve_ref + 40]
+                    curve_ref + 40, curve_ref + 41, curve_ref + 42,
+                    curve_ref + 43, curve_ref + 44, curve_ref + 45, 
+                    curve_ref + 46, curve_ref + 47, curve_ref + 104, 
+                    curve_ref + 106, curve_ref + 108, curve_ref + 110,
+                    curve_ref + 112, curve_ref + 114,curve_ref + 116,
+                    curve_ref + 118, curve_ref + 195]
     connecting_curves = []
     for elem in all_curves:
         boundaries = gmshMOD.getBoundary([elem])
@@ -1680,7 +1684,6 @@ def matrixfibergeo_central(transfinite_curves, matrix_ID = 23, angle = 30, but1 
             gmshMESH.setTransfiniteCurve(i, inter)
         else:
             gmshMESH.setTransfiniteCurve(i, s_and_t)
-    print(connecting_curves_tags)
     #In defining transfinite surfaces, there are also special cases (mostly related
     #to the not well-defined ellipse regions) that we have to define the outer
     #pointTags for. Additionally, we will also use the corresponding point tag
@@ -1749,6 +1752,146 @@ def matrixfibergeo_central(transfinite_curves, matrix_ID = 23, angle = 30, but1 
     
     return all_entities
 
+def matrixfibergeo_edges(transfinite, matrix_ID = 0, angle = 30):
+    #Main Dimensions of one Matrix-Fiber Layer:
+    height = 11
+    height_total = 11
+    length = 6
+    cent = 0.22  #fiber centerline distance
+    d = 0.12  #fiber diameter
+    r = d/2  #fiber radius
+    t = 0.2  #matrix thickness
+    ang = angle  #fiber orientation in deg
+
+    #The width of one of these matrix bodies projected onto the most
+    #bottom-most edge in the geometry in mm:
+    width = cent/cos(ang*pi/180)
+
+    #The height of one of these matrix bodies projected onto the most
+    #right-most edge in the geometry in mm:
+    height = cent/sin(ang*pi/180)
+
+    #Corner offset, which avoids weird, unsymmetrical fiber geometries:
+    off = 0.08
+
+    #Number of fibers to the right of this corner offset matrix:
+    N_fib = 22
+
+    #The corner fibers in this model are always going to be weird and are edge cases
+    #when defining a mesh for this geometry. Initially, it will be easier to ignore
+    #these cases and start meshing the full matrix-fiber bodies themselves. Based off
+    #of the SolidWorks parts, the origin (0, 0, 0) is defined as the bottom right hand
+    #corner with the non-matrix-fiber body and edge with the 0.08 mm offset.
+
+    #In dealing with this non-matrix-fiber body offset, the closest matrix body, which
+    #is to the left of the defined origin (negative x-value), has some starting x
+    #value for its right-most edge. After doing some trigonometry and geometry
+    #breakdowns, this offset is defined as:
+    start = length - width/2 - off - N_fib*width
+
+    #Additionally, for geometry/mesh preparation, it will useful to identify these
+    #matrix-fibers bodies by unique IDs. Starting off with the first offset matrix:
+    mat_ID = matrix_ID
+    
+    #To simplify the function-calling process, gmshOCC and gmshMOD is defined:
+    gmshOCC = gmsh.model.occ
+    gmshMOD = gmsh.model
+
+    #Geometry Generation
+    #The origin:
+    origin = gmshOCC.addPoint(0, 0, 0)
+    extr_ent = gmshOCC.extrude([(0, origin)], 0, t, 0)
+    extr_pt = dimTagReturner(0, extr_ent)
+
+    #Next, we wanna create the outer most boundaries of corner-most fiber. To do so,
+    #we first define the source and target faces by starting at on of their midpoints.
+    #This procedure will make more sense later on, when we define ellipse points.
+    #Some key variables include:
+    x_start = -start - mat_ID*width
+    y_start = t/2
+    z_start = -abs(x_start)*tan((90 - ang)*pi/180)
+ 
+    left_bot = gmshOCC.extrude([(0, origin)], x_start, 0, 0)
+    up_bot = gmshOCC.extrude([(0, origin)], 0, 0, z_start)
+    left_top = gmshOCC.extrude(extr_pt, x_start, 0, 0)
+    up_top = gmshOCC.extrude(extr_pt, 0, 0, z_start)
+    left_up = gmshOCC.addLine(dimTagReturner(0, left_bot)[0][1], dimTagReturner(0, left_top)[0][1])
+    up_up = gmshOCC.addLine(dimTagReturner(0, up_bot)[0][1], dimTagReturner(0, up_top)[0][1])
+    diag_bot = gmshOCC.addLine(dimTagReturner(0, left_bot)[0][1], dimTagReturner(0, up_bot)[0][1])
+    diag_top = gmshOCC.addLine(dimTagReturner(0, left_top)[0][1], dimTagReturner(0, up_top)[0][1])
+    
+    front = gmshOCC.addSurfaceFilling(gmshOCC.addCurveLoop([dimTagReturner(1, extr_ent)[0][1], 
+                                                    dimTagReturner(1, left_bot)[0][1], left_up, 
+                                                    dimTagReturner(1, left_top)[0][1]]))
+    right = gmshOCC.addSurfaceFilling(gmshOCC.addCurveLoop([dimTagReturner(1, extr_ent)[0][1], 
+                                                    dimTagReturner(1, up_bot)[0][1], up_up, 
+                                                    dimTagReturner(1, up_top)[0][1]]))
+    back = gmshOCC.addSurfaceFilling(gmshOCC.addCurveLoop([left_up, diag_bot, up_up, diag_top]))
+    top = gmshOCC.addSurfaceFilling(gmshOCC.addCurveLoop([dimTagReturner(1, left_top)[0][1], 
+                                                    diag_top, dimTagReturner(1, up_top)[0][1]]))
+    bot = gmshOCC.addSurfaceFilling(gmshOCC.addCurveLoop([dimTagReturner(1, left_bot)[0][1], 
+                                                    diag_bot, dimTagReturner(1, up_bot)[0][1]]))
+    vol1 = gmshOCC.addVolume([gmshOCC.addSurfaceLoop([front, right, back, top, bot])])
+    gmshOCC.synchronize()
+    
+    #Transfinite Settings:
+    maxLTag = gmshOCC.getMaxTag(1)
+    maxSTag = gmshOCC.getMaxTag(2)
+    maxVTag = gmshOCC.getMaxTag(3)
+    for i in range(dimTagReturner(1, extr_ent)[0][1], maxLTag + 1):
+        gmshMESH.setTransfiniteCurve(i, transfinite)
+    for i in range(front, maxSTag + 1):
+        gmshMESH.setTransfiniteSurface(i)
+        gmshMESH.setRecombine(2, i)
+    gmshMESH.setTransfiniteVolume(vol1)
+    
+    d1 = height_total - start*tan((90 - ang)*pi/180) - 24*height
+    d2 = d1*sin(ang*pi/180)
+    d3 = cent - d2
+    off_left = d3/cos(ang*pi/180)
+    off_left_corner = off_left - width/2
+    start_left = length - off_left - N_fib*width
+    x_start_left = -length + start_left + mat_ID*width
+    y_start_left = t/2
+    z_start_left = (length + x_start_left)/tan((ang)*pi/180) - height_total
+    
+    opp_corner = gmshOCC.addPoint(-length, 0, -height_total)
+    extr_ent_opp = gmshOCC.extrude([(0, opp_corner)], 0, t, 0)
+    left_bot_opp = gmshOCC.extrude([(0, opp_corner)], 0, 0, height_total + z_start_left)
+    left_top_opp = gmshOCC.extrude(dimTagReturner(0, extr_ent_opp), 0, 0, height_total + z_start_left)
+    up_bot_opp = gmshOCC.extrude([(0, opp_corner)], length + x_start_left, 0, 0)
+    up_top_opp = gmshOCC.extrude(dimTagReturner(0, extr_ent_opp), length + x_start_left, 0, 0)
+    left_up_opp = gmshOCC.addLine(dimTagReturner(0, left_bot_opp)[0][1], dimTagReturner(0, left_top_opp)[0][1])
+    up_up_opp = gmshOCC.addLine(dimTagReturner(0, up_bot_opp)[0][1], dimTagReturner(0, up_top_opp)[0][1])
+    diag_bot_opp = gmshOCC.addLine(dimTagReturner(0, left_bot_opp)[0][1], dimTagReturner(0, up_bot_opp)[0][1])
+    diag_top_opp = gmshOCC.addLine(dimTagReturner(0, left_top_opp)[0][1], dimTagReturner(0, up_top_opp)[0][1])
+    front = gmshOCC.addSurfaceFilling(gmshOCC.addCurveLoop([dimTagReturner(1, extr_ent_opp)[0][1], 
+                                                    dimTagReturner(1, left_bot_opp)[0][1], left_up_opp, 
+                                                    dimTagReturner(1, left_top_opp)[0][1]]))
+    right = gmshOCC.addSurfaceFilling(gmshOCC.addCurveLoop([dimTagReturner(1, extr_ent_opp)[0][1], 
+                                                    dimTagReturner(1, up_bot_opp)[0][1], up_up_opp, 
+                                                    dimTagReturner(1, up_top_opp)[0][1]]))
+    back = gmshOCC.addSurfaceFilling(gmshOCC.addCurveLoop([left_up_opp, diag_bot_opp, up_up_opp, diag_top_opp]))
+    top = gmshOCC.addSurfaceFilling(gmshOCC.addCurveLoop([dimTagReturner(1, left_top_opp)[0][1], 
+                                                    diag_top_opp, dimTagReturner(1, up_top_opp)[0][1]]))
+    bot = gmshOCC.addSurfaceFilling(gmshOCC.addCurveLoop([dimTagReturner(1, left_bot_opp)[0][1], 
+                                                    diag_bot_opp, dimTagReturner(1, up_bot_opp)[0][1]]))
+    vol2 = gmshOCC.addVolume([gmshOCC.addSurfaceLoop([front, right, back, top, bot])])
+    gmshOCC.synchronize()
+    
+    #Transfinite Settings:
+    maxLTag = gmshOCC.getMaxTag(1)
+    maxSTag = gmshOCC.getMaxTag(2)
+    maxVTag = gmshOCC.getMaxTag(3)
+    for i in range(dimTagReturner(1, extr_ent_opp)[0][1], maxLTag + 1):
+        gmshMESH.setTransfiniteCurve(i, transfinite)
+    for i in range(front, maxSTag + 1):
+        gmshMESH.setTransfiniteSurface(i)
+        gmshMESH.setRecombine(2, i)
+    gmshMESH.setTransfiniteVolume(vol2)
+    
+    return None
+
 def geometrygenerator(N):
     """
      geometrygenerator(N)
@@ -1769,13 +1912,12 @@ cent = 0.22  #fiber centerline distance
 d = 0.12  #fiber diameter
 r = d/2  #fiber radius
 t = 0.2  #matrix thickness
-#numLayers = 23
+numBodies = 23
 
-#geo = geometrygenerator(numLayers)
-
-#matrixfibergeo_right(22, [4, 5])
-#matrixfibergeo_left(22, [4, 5])
 matrixfibergeo_central([4, 5])
+matrixfibergeo_edges(5)
+geometrygenerator(numBodies)
+
 #gmshOCC.addBox(0, 0, 0, -length, t, -height)
 
 gmshOCC.synchronize()
