@@ -1758,8 +1758,6 @@ def matrixfibergeo_edges(transfinite, matrix_ID = 0, angle = 30):
     height_total = 11
     length = 6
     cent = 0.22  #fiber centerline distance
-    d = 0.12  #fiber diameter
-    r = d/2  #fiber radius
     t = 0.2  #matrix thickness
     ang = angle  #fiber orientation in deg
 
@@ -1795,7 +1793,6 @@ def matrixfibergeo_edges(transfinite, matrix_ID = 0, angle = 30):
     
     #To simplify the function-calling process, gmshOCC and gmshMOD is defined:
     gmshOCC = gmsh.model.occ
-    gmshMOD = gmsh.model
 
     #Geometry Generation
     #The origin:
@@ -1808,7 +1805,6 @@ def matrixfibergeo_edges(transfinite, matrix_ID = 0, angle = 30):
     #This procedure will make more sense later on, when we define ellipse points.
     #Some key variables include:
     x_start = -start - mat_ID*width
-    y_start = t/2
     z_start = -abs(x_start)*tan((90 - ang)*pi/180)
  
     left_bot = gmshOCC.extrude([(0, origin)], x_start, 0, 0)
@@ -1837,9 +1833,11 @@ def matrixfibergeo_edges(transfinite, matrix_ID = 0, angle = 30):
     #Transfinite Settings:
     maxLTag = gmshOCC.getMaxTag(1)
     maxSTag = gmshOCC.getMaxTag(2)
-    maxVTag = gmshOCC.getMaxTag(3)
     for i in range(dimTagReturner(1, extr_ent)[0][1], maxLTag + 1):
-        gmshMESH.setTransfiniteCurve(i, transfinite)
+        if i == dimTagReturner(1, extr_ent)[0][1] or i == left_up or i == up_up:
+            gmshMESH.setTransfiniteCurve(i, transfinite[1])
+        else:
+            gmshMESH.setTransfiniteCurve(i, transfinite[0])
     for i in range(front, maxSTag + 1):
         gmshMESH.setTransfiniteSurface(i)
         gmshMESH.setRecombine(2, i)
@@ -1849,10 +1847,8 @@ def matrixfibergeo_edges(transfinite, matrix_ID = 0, angle = 30):
     d2 = d1*sin(ang*pi/180)
     d3 = cent - d2
     off_left = d3/cos(ang*pi/180)
-    off_left_corner = off_left - width/2
     start_left = length - off_left - N_fib*width
     x_start_left = -length + start_left + mat_ID*width
-    y_start_left = t/2
     z_start_left = (length + x_start_left)/tan((ang)*pi/180) - height_total
     
     opp_corner = gmshOCC.addPoint(-length, 0, -height_total)
@@ -1882,9 +1878,11 @@ def matrixfibergeo_edges(transfinite, matrix_ID = 0, angle = 30):
     #Transfinite Settings:
     maxLTag = gmshOCC.getMaxTag(1)
     maxSTag = gmshOCC.getMaxTag(2)
-    maxVTag = gmshOCC.getMaxTag(3)
     for i in range(dimTagReturner(1, extr_ent_opp)[0][1], maxLTag + 1):
-        gmshMESH.setTransfiniteCurve(i, transfinite)
+        if i == dimTagReturner(1, extr_ent_opp)[0][1] or i == left_up_opp or i == up_up_opp:
+            gmshMESH.setTransfiniteCurve(i, transfinite[1])
+        else:
+            gmshMESH.setTransfiniteCurve(i, transfinite[0])
     for i in range(front, maxSTag + 1):
         gmshMESH.setTransfiniteSurface(i)
         gmshMESH.setRecombine(2, i)
@@ -1915,7 +1913,7 @@ t = 0.2  #matrix thickness
 numBodies = 23
 
 matrixfibergeo_central([4, 5])
-matrixfibergeo_edges(5)
+matrixfibergeo_edges([5, 7])
 geometrygenerator(numBodies)
 
 #gmshOCC.addBox(0, 0, 0, -length, t, -height)
