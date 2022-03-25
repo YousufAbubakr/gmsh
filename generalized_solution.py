@@ -8,7 +8,9 @@
 
 import gmsh
 import sys
-from sympy import cos, sin, pi, tan, sec
+from sympy import cos, sin, pi, tan, sec, sqrt
+import math
+import copy
 
 gmsh.initialize(sys.argv)
 gmsh.model.add("solution")
@@ -1888,7 +1890,7 @@ def matrixfibergeo_edges(transfinite, matrix_ID = 0, angle = 30):
         gmshMESH.setRecombine(2, i)
     gmshMESH.setTransfiniteVolume(vol2)
     
-    return None
+    return origin
 
 def geometrygenerator(N):
     """
@@ -1902,10 +1904,12 @@ def geometrygenerator(N):
     for i in range(N):
         all_all_entities.append(matrixfibergeo_right(i, [4, 5]))
         all_all_entities.append(matrixfibergeo_left(i, [4, 5]))
+        print("Matrix-fiber body #"+ str(i))
     return all_all_entities
 
 height = 11
 length = 6 
+ang = 30
 cent = 0.22  #fiber centerline distance
 d = 0.12  #fiber diameter
 r = d/2  #fiber radius
@@ -1913,8 +1917,114 @@ t = 0.2  #matrix thickness
 numBodies = 23
 
 matrixfibergeo_central([4, 5])
-matrixfibergeo_edges([5, 7])
-geometrygenerator(numBodies)
+origin = matrixfibergeo_edges([5, 7])
+geo = geometrygenerator(numBodies)
+
+#lineTags = []
+#lineTags.append(233)
+#lineTags.append(242)
+#lineTags.append(18)
+#lineTags.append(19)
+#lineTags.append(20)
+#for i in range(23):
+    #if i == 22:
+        #lineTags.append(261 + 512*i)
+        #lineTags.append(517 + 512*i)
+    #else:
+        #lineTags.append(261 + 512*i)
+        #lineTags.append(262 + 512*i)
+        #lineTags.append(517 + 512*i)
+        #lineTags.append(516 + 512*i)
+#lineTagsCopy = copy.deepcopy(lineTags)
+
+#surfTags = []
+#surfTags.append((2, 2))
+#surfTags.append((2, 3))
+#surfTags.append((2, 146))
+#surfTags.append((2, 151))
+#for i in range(23):
+    #surfTags.append((2, 154 + 308*i))
+    #surfTags.append((2, 155 + 308*i))
+    #surfTags.append((2, 309 + 308*i))
+    #surfTags.append((2, 308 + 308*i))
+
+#res = 5
+#corner = gmshOCC.addPoint(-length, t, 0)
+#cornerOPP = gmshOCC.addPoint(0, t, -sqrt(3)*length)
+#for i in range(res - 2):
+    #d = length*sqrt(2)  #total segment distance
+    #d = d/(res - 1)
+    #print(float(d))
+    #dX = d*cos((90 - ang)*pi/180)
+    #dZ = d*sin((90 - ang)*pi/180)
+    #print(dX, dZ)
+    #inter = [-length + dX, t, -dZ]
+    #print(inter)
+    #new = gmshOCC.addPoint(inter[0], inter[1], inter[2])
+    #originNEW = gmshOCC.addPoint(0, t, 0)
+    #gmshOCC.addLine(originNEW, new)
+    
+
+#for i in range(len(lineTags)):
+    #line = lineTags[i]
+    #lineCopy = gmshOCC.copy([(1, line)])
+    #lineCopy = gmshOCC.mirror(lineCopy, 1, 0, 0, length/2)
+    #lineCopy = gmshOCC.getMaxTag(1)
+    #lineTagsCopy.append(lineCopy)
+    #print("Line Tag #" + str(lineCopy))
+    #print("LineTagCopy #" + str(lineTagsCopy[-1]))
+    #bounded = gmshOCC.getEntitiesInBoundingBox(-1000, t - 0.01, -1000, 1000, 1000, 1000, 2)
+    #result, resultMap = gmshOCC.fragment([(1, lineTagsCopy[-1])], bounded)
+    #fragmentedCurves = dimTagReturner(1, result)
+    #print("Fragmented curves: " + str(fragmentedCurves))
+    #for dimTag in fragmentedCurves:
+        #lineTagsCopy.append(dimTag[1])
+            
+#for line in lineTags:
+    #lineCopy = gmshOCC.copy([(1, line)])
+    #lineCopy = gmshOCC.mirror(lineCopy, 1, 0, 0, length/2)
+    #lineCopy = gmshOCC.getMaxTag(1)
+    #lineTagsCopy.append(lineCopy)
+    #print("Line Tag #" + str(lineCopy))
+    #if lineCopy == 12021:
+        #print("Line TagCopy #" + str(lineTagsCopy[-1]))
+        #bounded = gmshOCC.getEntitiesInBoundingBox(-1000, t - 0.01, -1000, 1000, 1000, 1000, 2)
+        #result = gmshOCC.fragment([(1, lineTagsCopy[-1])], bounded)
+        #fragmentedCurves = dimTagReturner(1, result)
+        #lineTagsCopy.extend(fragmentedCurves)
+    #if lineCopy == 12021:
+        #result, resultMap = gmshOCC.fragment([(1, lineCopy)], surfTags)
+        #print("Resultant surface tags from 12021: " + str(dimTagReturner(2, result)))
+    #elif lineCopy == 12498:
+        #surfTags.extend(dimTagReturner(2, result))
+        #result, resultMap = gmshOCC.fragment([(1, lineCopy)], surfTags)
+        #print("Resultant surface tags from 12021: " + str(dimTagReturner(2, result)))
+    #elif lineCopy == 13026:
+        #surfTags.extend(dimTagReturner(2, result))
+        #bounded = gmshOCC.getEntitiesInBoundingBox(-1000, t - 0.01, -1000, 1000, 1000, 1000, 2)
+        #result, resultMap = gmshOCC.fragment([(1, lineCopy)], bounded)
+    #elif lineCopy == 13415:
+        #surfTags.extend(dimTagReturner(2, result))
+        #bounded = gmshOCC.getEntitiesInBoundingBox(-1000, t - 0.01, -1000, 1000, 1000, 1000, 2)
+        #gmshOCC.fragment([(1, lineCopy)], bounded)
+
+
+#print("before: " + str(lineTags))
+#print("after: " + str(lineTagsCopy))
+
+#lineCopy = gmshOCC.copy([(1, 9990)])
+#lineCopy = gmshOCC.mirror(lineCopy, 1, 0, 0, length/2)
+#lineCopy = gmshOCC.getMaxTag(1)
+
+#volTags = []
+#for i in range(23):
+    #volTags.append((3, 21 + 34*i))
+    #volTags.append((3, 22 + 34*i))
+    #volTags.append((3, 39 + 34*i))
+    #volTags.append((3, 38 + 34*i))
+#volTags.append((3, 2))
+#volTags.append((3, 3))
+#gmshOCC.fragment([(1, lineCopy)], surfTags)
 
 #gmshOCC.addBox(0, 0, 0, -length, t, -height)
 
@@ -1922,7 +2032,49 @@ gmshOCC.synchronize()
 
 #Mesh Generation
 gmsh.option.setNumber("Mesh.Smoothing", 0)
-#gmsh.model.mesh.generate(2)
+gmshMESH.generate(3)
+gmshMESH.removeDuplicateNodes()
+nodeTags, coords, paramCoords = gmshMESH.getNodes()
+elemType, elemTags, nodeTags = gmshMESH.getElements()
+print("Coords: " + str(coords))
+print("Node Tags: " + str(nodeTags))
+nodesBefore = []
+for arr in nodeTags:
+    for index in arr:
+        coord, paramCoord, dim, tag = gmshMESH.getNode(index)
+        print("small node: " + str(coord))
+        if coord[1] >= 0.195:
+            nodesBefore.append([coord[0], coord[1], coord[2]])
+for i in range(len(nodesBefore)):
+    x = nodesBefore[i][0]
+    nodesBefore[i][0] = -length + abs(x)
+for coordinate in nodesBefore:
+    gmshOCC.addPoint(coordinate[0], coordinate[1], coordinate[2])
+#surfNodes = []
+#for i in range(1, len(coords), 2):
+    #print("big node: " + str(coords[i]))
+    #if coords[i] >= 0.195:
+        #node = nodeTags[math.floor((i + 2)/3)]
+        #surfNodes.append([coords[i - 1], coords[i], coords[i + 1], node])
+#print("Surface Nodes Before: " + str(surfNodes))
+#print(len(surfNodes))
+#for i in range(len(surfNodes)):
+    #x = surfNodes[i][0]
+    #surfNodes[i][0] = -length + abs(x)
+#for coord in surfNodes:
+    #gmshOCC.addPoint(coord[0], coord[1], coord[2])
+#dimensions = [0, 1, 2, 3]
+#for dim in dimensions:
+    #for i in range(gmshOCC.getMaxTag(dim) + 1):
+        #if gmshMOD.isInside(dim, i, coord):
+            #gmshMESH.addNodes(dim, i, [])
+#print("Surface Nodes After: " + str(surfNodes))
+#print(len(surfNodes))
+
+gmshOCC.synchronize()
+
+#gmshMESH.generate(3)
+#gmshMESH.removeDuplicateNodes()
 
 #Comments
 v = gmsh.view.add("comments")
